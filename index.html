@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>CLAP-WASM player</title>
+		<style>
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				display: grid;
+				grid-template-areas: "audio" "main";
+				grid-template-rows: min-content 1fr;
+				
+				position: fixed;
+				margin: 0;
+				padding: 0;
+				left: 0;
+				top: 0;
+				width: 100vw;
+				height: 100vh;
+				overflow: auto;
+				
+				font-family: Verdana, sans-serif;
+			}
+			audio {
+				padding: 5px;
+				grid-area: 'audio';
+				width: 100%;
+				opacity: 0.98;
+			}
+			#background {
+				position: fixed;
+				left: 0;
+				top: 0;
+				width: 100vmax;
+				height: 100vmin;
+				object-fit: cover;
+				z-index: -1;
+				pointer-events: none;
+			}
+			@media (max-aspect-ratio: 1) {
+				#background {
+					transform-origin: 50vmin 50vmin;
+					transform: rotate(90deg);
+				}
+			}
+			main {
+				grid-area: 'main';
+				margin: 1rem;
+				background: #FFFAF272;
+				color: #000;
+				border-radius: 0.3rem;
+				overflow: auto;
+			}
+			fieldset {
+				margin: 1rem;
+				background: #FFF8;
+				border: none;
+				border-radius: 0.3rem;
+			}
+			label {
+				display: grid;
+				grid-template-areas: 'name input output';
+				grid-template-columns: 1fr minmax(15rem, 2fr) 1fr;
+				width: 100%;
+			}
+			input[type=range] {
+				width: 100%;
+			}
+			output, .name {
+				margin: 0.5rem;
+			}
+			.name {
+				text-align: right;
+			}
+		</style>
+	</head>
+	<body>
+		<img id="background" src="rainbow-texture.jpg">
+		<audio id="media" src="audio/loop.mp3" controls loop></audio>
+		<main>
+			<fieldset id="params"></fieldset>
+		</main>
+		<script type="module">
+			import createClapNode from "./audioworkletnode-clap.mjs";
+		
+			let wasmUrl = '../build-emscripten/hello-clap_artefacts/hello-clap.clasm/hello-clap.wasm';
+
+			let audioContext = new AudioContext();
+			['play', 'mousedown', 'focus'].forEach(name => {
+				window.addEventListener(name, e => audioContext.resume(name), {capture: true});
+			});
+			let audioSource = audioContext.createMediaElementSource(document.querySelector('#media'));
+			
+			let module = await WebAssembly.compileStreaming(fetch(wasmUrl));
+			let effectNode = await createClapNode(audioContext, {
+				numberOfInputs: 1,
+				numberOfOutputs: 1,
+				outputChannelCount: [2],
+				processorOptions: {
+					url: wasmUrl,
+					module: module,
+				}
+			});
+			audioSource.connect(effectNode);
+			effectNode.connect(audioContext.destination);
+			window.effectNode = effectNode;
+			
+			function makeSlider(param) {
+				let group = document.querySelector('#params');
+				let label = document.createElement('label');
+				
+				let name = document.createElement('span');
+				name.classList.add('name');
+				name.append(param.name);
+
+				let input = document.createElement('input');
+				input.type = 'range';
+				input.min = param.min_value;
+				input.max = param.max_value;
+				input.value = param.value.value;
+				input.step = param.flags.stepped ? 1 : 1e-6;
+				let updateValue = input.oninput = async e => {
+					param.value = await effectNode.setParam(param.id, parseFloat(input.value));
+					output.textContent = param.value.text;
+				};
+				input.ondblclick = e => {
+					input.value = param.default_value;
+					updateValue();
+				};
+				
+				let output = document.createElement('output');
+				output.textContent = param.value.text;
+
+				label.append(name, input, output);
+				group.append(label);
+			}
+
+			let params = await effectNode.getParams();
+			params.forEach(makeSlider);
+		</script>
+	</body>
+</html>
