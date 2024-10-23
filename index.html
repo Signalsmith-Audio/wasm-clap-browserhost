@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<meta charset="utf-8">
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>CLAP-WASM player</title>
 		<style>
 			* {
@@ -54,7 +55,8 @@
 				overflow: auto;
 			}
 			fieldset {
-				margin: 1rem;
+				margin: 1rem auto;
+				width: calc(min(100% - 2rem, 500pt));
 				background: #FFF8;
 				border: none;
 				border-radius: 0.3rem;
@@ -62,7 +64,7 @@
 			label {
 				display: grid;
 				grid-template-areas: 'name input output';
-				grid-template-columns: 1fr minmax(15rem, 2fr) 1fr;
+				grid-template-columns: 1fr 3fr minmax(5rex, 1fr);
 				width: 100%;
 			}
 			input[type=range] {
@@ -70,6 +72,10 @@
 			}
 			output, .name {
 				margin: 0.5rem;
+			}
+			output {
+				overflow: hidden;
+				mask: linear-gradient(-90deg, #FFF0, #FFFD 1em, #FFF 2em);
 			}
 			.name {
 				text-align: right;
@@ -85,7 +91,8 @@
 		<script type="module">
 			import createClapNode from "./audioworkletnode-clap.mjs";
 		
-			let wasmUrl = '../build-emscripten/hello-clap_artefacts/hello-clap.clasm/hello-clap.wasm';
+			const urlParams = new URLSearchParams(window.location.search);
+			const wasmUrl = urlParams.get('module') || 'plugin/hello-clap/hello-clap.wasm';
 
 			let audioContext = new AudioContext();
 			['play', 'mousedown', 'focus'].forEach(name => {

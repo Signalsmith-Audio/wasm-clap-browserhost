@@ -56,6 +56,7 @@ export default class HostedPlugin {
 	
 	eventsIn = {
 		pointer: -1,
+		list: [],
 	};
 	eventsOut = {
 		pointer: -1
@@ -108,10 +109,10 @@ export default class HostedPlugin {
 			request_process() {throw Error("not implemented");},
 			request_callback() {throw Error("not implemented");},
 			input_events_size() {
-				return this.eventsIn.size?.() || 0;
+				return this.eventsIn.list.length;
 			},
-			input_events_get() {
-				return this.eventsIn['get']?.() || 0;
+			input_events_get(i) {
+				return this.eventsIn.list[i];
 			},
 			output_events_try_push(eventPtr) {
 				return this.eventsOut['try_push']?.() || false;

@@ -1,5 +1,3 @@
-import clapModule from "./clap-host/clasm.mjs";
-
 let moduleAdded = Symbol();
 
 export default async function createClapNode(audioContext, options) {

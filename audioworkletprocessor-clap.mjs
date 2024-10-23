@@ -1,4 +1,4 @@
-import clapModule from "./clap-host/clasm.mjs";
+import clapModule from "./clap-host/clap-module.mjs";
 
 class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	inputChannelCounts = [];
@@ -33,15 +33,16 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			this.clapPlugin = clapPlugin;
 			this.clapActivate();
 			
+			// initial message lists plugin descriptor and remote methods
 			this.port.postMessage({
 				desc: clapPlugin.api.clap_plugin_descriptor(clapPlugin.plugin.desc),
 				methods: Object.keys(this.remoteMethods)
 			});
 		});
-				
+		
+		// subsequent messages are proxied method calls
 		this.port.onmessage = async event => {
-			let data = event.data;
-			let requestId = data[0], method = data[1], args = data[2];
+			let [requestId, method, args] = event.data;
 
 			try {
 				let result = await this.remoteMethods[method].call(this, ...args);
@@ -58,7 +59,6 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			let params = plugin.ext['clap.params'];
 			if (!params) throw Error("clap.params not supported");
 			
-			// Single-threaded, so no reason not to immediately flush
 			let eventPtr = plugin.api.temp(plugin.api.clap_event_param_value, {
 				header: {
 					size: plugin.api.sizeof(plugin.api.clap_event_param_value),
@@ -76,11 +76,10 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 				
 				value: value
 			});
-			plugin.eventsIn.size = () => 1;
-			plugin.eventsIn['get'] = () => eventPtr;
+			plugin.eventsIn.list = [eventPtr];
+			// Single-threaded, so no reason not to immediately flush
 			params.flush(plugin.eventsIn.pointer, plugin.eventsOut.pointer);
-			delete plugin.eventsIn.size;
-			delete plugin.eventsIn['get'];
+			plugin.eventsIn.list = [];
 			
 			return this.remoteMethods.getParam.call(this, id);
 		},

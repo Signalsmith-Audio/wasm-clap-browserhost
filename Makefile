@@ -1,3 +1,6 @@
+server:
+	python3 -m http.server
+
 bundle:
 	npx rollup clap-host/clasm.mjs --file clasm.mjs --format es --sourcemap
 	
