@@ -4,14 +4,14 @@ Here are some notes for compiing a CLAP plugin to a self-contained `.wasm` file 
 
 ## General
 
-The WASM module needs the following exports:
+The WASM module needs to export:
 
 * `memory`
 * `clap_entry` - pointer to the entry object
 * `malloc(size)` - allocates memory for the host to use
 * a growable WebAssembly.Table (full of function references)
 
-We need `malloc` because the host needs to provide pointers to structures and audio buffers.  Rather than structuring the WASM module as a shared library (which isn't universal), the plugin module is self-contained but allows the host to inject itself. 
+We need `malloc` because the host needs to provide pointers to structures and audio buffers.  Rather than structuring the WASM module as a shared library (which isn't currently standardised), the plugin module is self-contained but allows the host to inject itself.
 
 ### Finding the Table
 
@@ -37,10 +37,12 @@ None of these requirements/behaviours are specific to Emscripten, but it's prett
 
 ## Threads
 
-WebAssembly is generally single-threaded (Emscripten's experimental support requires specific setup, and atomic/mutex support is dodgy).  This might require WASM-specific code in your plugin.
+Each WebAssembly instance is single-threaded, and multi-threading is done by having multiple instances (perhaps of different modules!) using shared memory.  This means that (if you import shared `memory` instead of exporting it) you could have calls being made on separate UI/audio threads.
 
-However, threads are most _commonly_ used for passing messages between the audio/UI components.  If a WASM build doesn't include the `clap.gui` extension, then the threads might not be necessary either.
+Many non-browser engines don't support shared memory anyway (and in a browser you need to [lock everything down](https://hacks.mozilla.org/2020/07/safely-reviving-shared-memory/) before you can pass memory around).  Even where supported, you can't spawn your own threads (for now) from inside the WebAssembly module.
+
+However, threads are most commonly used for passing messages between the audio/UI components.  If a WASM build doesn't include the `clap.gui` extension, then the threads might not be necessary either.
 
 ### C++
 
-With Emscripten at least, you can _have_ a `std::thread` but actually starting one throws an error.  Therefore, if you only start the `std::thread` when you actually *need* it (e.g. when the GUI is opened) that can avoid the problem.
+With Emscripten at least, you can still have a `std::thread` but actually starting one throws an error.  Therefore, if you only start the `std::thread` when you actually need it (e.g. when the GUI is opened) that can avoid the problem.
