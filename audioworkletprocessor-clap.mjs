@@ -30,6 +30,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			}
 			
 			let clapPlugin = await module.create(pluginId);
+			Object.assign(clapPlugin.hostJs, this.makeHostMethods());
 			this.clapPlugin = clapPlugin;
 			this.clapActivate();
 			
@@ -52,6 +53,15 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			}
 		};
 	}
+	
+	pendingEvents = [];
+	makeHostMethods() {
+		return {
+			input_events_size: () => this.pendingEvents.length,
+			input_events_get: i => this.pendingEvents[i],
+			output_events_try_push: ptr => false
+		};
+	};
 	
 	remoteMethods = {
 		setParam(id, value) {
@@ -76,10 +86,10 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 				
 				value: value
 			});
-			plugin.eventsIn.list = [eventPtr];
+			this.pendingEvents = [eventPtr];
 			// Single-threaded, so no reason not to immediately flush
-			params.flush(plugin.eventsIn.pointer, plugin.eventsOut.pointer);
-			plugin.eventsIn.list = [];
+			params.flush(plugin.hostPointers.input_events, plugin.hostPointers.input_events);
+			this.pendingEvents = [];
 			
 			return this.remoteMethods.getParam.call(this, id);
 		},
@@ -216,8 +226,8 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			audio_outputs: audioOutputPtr,
 			audio_inputs_count: 1,
 			audio_outputs_count: 1,
-			in_events: this.clapPlugin.eventsIn.pointer,
-			out_events: this.clapPlugin.eventsOut.pointer
+			in_events: this.clapPlugin.hostPointers.input_events,
+			out_events: this.clapPlugin.hostPointers.output_events
 		});
 		
 		plugin.process(processPtr);
