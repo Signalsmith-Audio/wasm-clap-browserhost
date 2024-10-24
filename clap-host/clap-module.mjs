@@ -18,7 +18,8 @@ async function clapHostBinding(moduleInstance, api, factory) {
 		if (v.kind === 'function' && v.module === 'proxy') {
 			let key = v.name;
 			hostMethodImports[key] = (hostPointer, ...args) => {
-				return hostPointerMap[hostPointer][key](...args);
+				let entry = hostPointerMap[hostPointer];
+				return entry.m_methods[key].call(entry.m_this, ...args);
 			};
 		}
 	});
@@ -34,8 +35,8 @@ async function clapHostBinding(moduleInstance, api, factory) {
 	let hostBinding = {
 		m_staticExtensionPointers: staticExtensionPointers,
 		m_methods: hostFunctions,
-		m_register(hostPointer, host) {
-			hostPointerMap[hostPointer] = host;
+		m_register(hostPointer, methods, thisArg) {
+			hostPointerMap[hostPointer] = {m_methods:methods, m_this: thisArg};
 		},
 		m_addToPool(key, host) {
 			hostPool[key] = host;

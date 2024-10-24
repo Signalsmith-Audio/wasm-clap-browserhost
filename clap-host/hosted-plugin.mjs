@@ -61,6 +61,21 @@ export default class HostedPlugin {
 	eventsOut = {
 		pointer: -1
 	};
+	
+	hostMethods = {
+		request_restart() {throw Error("not implemented");},
+		request_process() {throw Error("not implemented");},
+		request_callback() {throw Error("not implemented");},
+		input_events_size() {
+			return this.eventsIn.list.length;
+		},
+		input_events_get(i) {
+			return this.eventsIn.list[i];
+		},
+		output_events_try_push(eventPtr) {
+			return this.eventsOut['try_push']?.() || false;
+		}
+	};
 
 	constructor(api, hostBinding, factory) {
 		let methods = hostBinding.m_methods;
@@ -100,25 +115,12 @@ export default class HostedPlugin {
 		}
 
 		// Registers the methods to place in the host structs
-		let hostMethods = {
+		let hostMethods = Object.assign(this.hostMethods, {
 			get_extension(cStr) {
 				let str = api.fromArg(api.string, cStr);
 				return extensionPointers[str] || 0;
-			},
-			request_restart() {throw Error("not implemented");},
-			request_process() {throw Error("not implemented");},
-			request_callback() {throw Error("not implemented");},
-			input_events_size() {
-				return this.eventsIn.list.length;
-			},
-			input_events_get(i) {
-				return this.eventsIn.list[i];
-			},
-			output_events_try_push(eventPtr) {
-				return this.eventsOut['try_push']?.() || false;
 			}
-		};
-		for (let key in hostMethods) hostMethods[key] = hostMethods[key].bind(this);
+		});
 		let boundJs = Object.create(this); // so "this" can refer to other extension methods/data, or the host
 		for (let key in HostedPlugin.#m_extensions) {
 			let extension = HostedPlugin.#m_extensions[key];
@@ -129,9 +131,9 @@ export default class HostedPlugin {
 				}
 			}
 		}
-		hostBinding.m_register(this.#m_hostPointer, hostMethods);
-		hostBinding.m_register(this.eventsIn.pointer, hostMethods);
-		hostBinding.m_register(this.eventsIn.pointer, hostMethods);
+		hostBinding.m_register(this.#m_hostPointer, hostMethods, this);
+		hostBinding.m_register(this.eventsIn.pointer, hostMethods, this);
+		hostBinding.m_register(this.eventsIn.pointer, hostMethods, this);
 	}
 
 	bind(pluginId) {
