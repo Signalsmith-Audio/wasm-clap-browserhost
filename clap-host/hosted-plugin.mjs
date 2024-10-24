@@ -8,7 +8,9 @@ export default class HostedPlugin {
 		request_callback: 'vp',
 		input_events_size: 'ip',
 		input_events_get: 'ppi',
-		output_events_try_push: 'ipp'
+		output_events_try_push: 'ipp',
+		istream_read: 'IppI',
+		ostream_write: 'IppI'
 	};
 	static #m_modulePromise;
 	static methodProxyModule() {
@@ -71,8 +73,24 @@ export default class HostedPlugin {
 		request_callback() {throw Error("not implemented");},
 		input_events_size() {return 0;},
 		input_events_get(i) {throw Error("not implemented");},
-		output_events_try_push(eventPtr) {return false;}
+		output_events_try_push(eventPtr) {return false;},
+		istream_read(buffer, size) {throw Error("not implemented");},
+		ostream_write(buffer, size) {throw Error("not implemented");},
 	};
+	
+	read_istream(istreamPtr, maxLength=16384) {
+		let offset = 0;
+		let buffer = this.api.tempTyped(this.api.u8, maxLength);
+		let istream = this.api.clap_istream(istreamPtr);
+		while (offset < buffer.length) {
+			let sub = buffer.subarray(offset);
+			let bytes = istream.read(istreamPtr, sub, BigInt(sub.length));
+			if (bytes < 0) return false;
+			if (!bytes) break;
+			offset += Number(bytes);
+		}
+		return buffer.subarray(0, offset);
+	}
 
 	constructor(api, hostBinding, factory) {
 		let methods = Object.assign(this.hostMethods, hostBinding.m_methods);
@@ -145,7 +163,7 @@ export default class HostedPlugin {
 			if (extension.readPlugin) {
 				let pluginExtPtr = this.plugin.get_extension(key);
 				if (pluginExtPtr) {
-					this.ext[key] = extension.readPlugin(this.api, pluginExtPtr, pluginPtr);
+					this.ext[key] = extension.readPlugin.call(this, this.api, pluginExtPtr, pluginPtr);
 				}
 			}
 		}

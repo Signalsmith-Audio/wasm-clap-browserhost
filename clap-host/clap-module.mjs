@@ -103,4 +103,6 @@ async function clapModule(options) {
 	};
 }
 
+clapModule.addExtension = HostedPlugin.addExtension.bind(HostedPlugin);
+
 export {clapModule as default};

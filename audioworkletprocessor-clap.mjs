@@ -1,5 +1,51 @@
 import clapModule from "./clap-host/clap-module.mjs";
 
+clapModule.addExtension("clap.web/1", {
+	wasm: {
+		ext_web_is_open: 'ip',
+		ext_web_send: 'ippi'
+	},
+	js: {
+		ext_web_is_open() {
+			// never open for now
+			return false;
+		},
+		// This is the name on the host struct, so it means the plugin has sent us a message
+		ext_web_send(istreamPtr) {
+			return false;
+		}
+	},
+	addTypes(api, methods) {
+		api.clap_plugin_web = api.makeStruct(
+			{get_start: api.makeFunc(api.pointer, api.pointer, api.u32)},
+			{receive: api.makeFunc(api.pointer, api.pointer, api.u32)}
+		);
+		api.clap_host_web = api.makeStruct(
+			{is_open: api.makeFunc(api.pointer)},
+			{send: api.makeFunc(api.pointer, api.pointer, api.u32)}
+		);
+		return api.save(api.clap_host_web, {
+			is_open: methods.ext_web_is_open,
+			send: methods.ext_web_send
+		});
+	},
+	readPlugin(api, pointer, pluginPtr) {
+		let web = api.clap_plugin_web(pointer, pluginPtr);
+		let buffer = api.tempBytes(1024);
+		if (!web.get_start(buffer, 1024)) return null;
+		return {
+			startPage: api.fromArg(api.string, buffer),
+			send: message => {
+				let messageArr = new Uint8Array(message);
+				let buffer = this.api.tempTyped(Uint8Array, messageArr.length);
+				buffer.set(messageArr);
+				web.receive(buffer, buffer.length)
+			}
+		};
+		debugger;
+	}
+});
+
 class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	inputChannelCounts = [];
 	outputChannelCounts = [];
@@ -35,15 +81,23 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			this.clapActivate();
 			
 			// initial message lists plugin descriptor and remote methods
+			let web = this.clapPlugin.ext['clap.web/1'];
 			this.port.postMessage({
 				desc: clapPlugin.api.clap_plugin_descriptor(clapPlugin.plugin.desc),
-				methods: Object.keys(this.remoteMethods)
+				methods: Object.keys(this.remoteMethods),
+				web: web && {startPage: web.startPage}
 			});
 		});
 		
 		// subsequent messages are proxied method calls
 		this.port.onmessage = async event => {
-			let [requestId, method, args] = event.data;
+			let data = event.data;
+			if (data instanceof ArrayBuffer) {
+				let web = this.clapPlugin.ext['clap.web/1'];
+				if (web) web.send(data);
+				return;
+			}
+			let [requestId, method, args] = data;
 
 			try {
 				let result = await this.remoteMethods[method].call(this, ...args);
@@ -54,12 +108,26 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		};
 	}
 	
+	webIsOpen = false;
+	
 	pendingEvents = [];
 	makeHostMethods() {
 		return {
 			input_events_size: () => this.pendingEvents.length,
 			input_events_get: i => this.pendingEvents[i],
-			output_events_try_push: ptr => false
+			output_events_try_push: ptr => false,
+			ext_params_rescan: flags => {
+				let params = {};
+				this.port.postMessage(['params_rescan', flags]);
+			},
+			ext_web_is_open: () => this.webIsOpen,
+			// plugin sent to us
+			ext_web_send: (ptr, length) => {
+				if (!this.webIsOpen) return false;
+				let message8 = this.clapPlugin.api.asTyped(Uint8Array, ptr, length);
+				let message = message8.slice().buffer;
+				this.port.postMessage(message, [message]); // copy the buffer, and transfer ownership of the copy
+			}
 		};
 	};
 	
@@ -145,6 +213,9 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 				paramInfo.push(info);
 			}
 			return paramInfo;
+		},
+		webOpen(isOpen) {
+			return this.webIsOpen = isOpen;
 		}
 	};
 

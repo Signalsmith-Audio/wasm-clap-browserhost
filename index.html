@@ -48,17 +48,26 @@
 			}
 			main {
 				grid-area: 'main';
+				display: flex;
+				padding: 1rem;
+				gap: 1rem;
+				flex-direction: column;
 				background: #FFFAF272;
 				color: #000;
 				border-radius: 0.3rem;
 				overflow: auto;
+				
 			}
-			fieldset {
-				margin: 1rem auto;
-				width: calc(min(100% - 2rem, 500pt));
+			main > * {
+				width: 100%;
+				max-width: 500pt;
+				margin: 0 auto;
 				background: #FFF8;
 				border: none;
 				border-radius: 0.3rem;
+			}
+			iframe {
+				flex-grow: 1;
 			}
 			label {
 				display: grid;
@@ -111,7 +120,12 @@
 			});
 			audioSource.connect(effectNode);
 			effectNode.connect(audioContext.destination);
-			window.effectNode = effectNode;
+			globalThis.effectNode = effectNode;
+			
+			let paramUpdateFns = [];
+			effectNode.events.params_rescan = flags => {
+				paramUpdateFns.forEach(fn => fn());
+			};
 			
 			function makeSlider(param) {
 				let group = document.querySelector('#params');
@@ -127,13 +141,19 @@
 				input.max = param.max_value;
 				input.value = param.value.value;
 				input.step = param.flags.stepped ? 1 : 1e-6;
-				let updateValue = input.oninput = async e => {
+				let writeValue = input.oninput = async e => {
 					param.value = await effectNode.setParam(param.id, parseFloat(input.value));
 					output.textContent = param.value.text;
 				};
+				let readValue = async e => {
+					param.value = await effectNode.getParam(param.id);
+					input.value = param.value.value;
+					output.textContent = param.value.text;
+				};
+				paramUpdateFns.push(readValue);
 				input.ondblclick = e => {
 					input.value = param.default_value;
-					updateValue();
+					writeValue();
 				};
 				
 				let output = document.createElement('output');
@@ -145,6 +165,11 @@
 
 			let params = await effectNode.getParams();
 			params.forEach(makeSlider);
+			
+			if (effectNode.openInterface) {
+				let iframe = effectNode.openInterface();
+				document.querySelector('main').append(iframe);
+			}
 		</script>
 	</body>
 </html>
