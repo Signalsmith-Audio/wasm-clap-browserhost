@@ -19,6 +19,7 @@ async function clapHostBinding(moduleInstance, api, factory) {
 		if (v.kind === 'function' && v.module === 'proxy') {
 			let key = v.name;
 			hostMethodImports[key] = (hostPointer, ...args) => {
+				api.memoryMaybeChanged(); // we've been called _from_ native code - it might've resized before this point
 				let entry = hostPointerMap[hostPointer];
 				return entry.m_methods[key].call(entry.m_this, ...args);
 			};

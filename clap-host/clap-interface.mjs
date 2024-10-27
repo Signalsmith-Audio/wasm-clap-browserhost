@@ -383,6 +383,7 @@ export default function clapInterface(instance, hostMemorySize=1024*1024, logFn=
 			if (start%bpe) throw Error("start not aligned");
 			return new TypedArray(memory.buffer, start, length);
 		},
+		memoryMaybeChanged: resetView,
 
 		log: logFn || console.log.bind(console),
 		save(type, value) {
