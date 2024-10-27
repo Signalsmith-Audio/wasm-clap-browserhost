@@ -66,6 +66,8 @@ async function clapHostBinding(moduleInstance, api, factory) {
 
 async function clapModule(options) {
 	let url = options.url;
+	// If we specify a directory (ends in `/`) then use `module.wasm`
+	if (/\/$/.test(url)) url += "module.wasm";
 	let instance = await instantiate(options);
 
 	if (!('clap_entry' in instance.exports)) throw Error('no clap_entry found');
