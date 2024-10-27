@@ -438,6 +438,7 @@ export default function clapInterface(instance, hostMemorySize=1024*1024, logFn=
 
 	addTypes({
 		// numeric types
+		bool: i32, // wasm32
 		i8: i8,
 		u8: u8,
 		i16: i16,

@@ -4,6 +4,7 @@ import clapInterface from"./clap-interface.mjs";
 import HostedPlugin from "./hosted-plugin.mjs";
 import "./ext/log.mjs";
 import "./ext/params.mjs";
+import "./ext/audio-ports.mjs";
 
 async function clapHostBinding(moduleInstance, api, factory) {
 	let hostModule = await HostedPlugin.methodProxyModule();
@@ -66,8 +67,6 @@ async function clapHostBinding(moduleInstance, api, factory) {
 
 async function clapModule(options) {
 	let url = options.url;
-	// If we specify a directory (ends in `/`) then use `module.wasm`
-	if (/\/$/.test(url)) url += "module.wasm";
 	let instance = await instantiate(options);
 
 	if (!('clap_entry' in instance.exports)) throw Error('no clap_entry found');

@@ -97,10 +97,11 @@
 			<fieldset id="params"></fieldset>
 		</main>
 		<script type="module">
-			import createClapNode from "./audioworkletnode-clap.mjs";
+			import ClapModule from "./audioworkletnode-clap.mjs";
+			// import "./audioworkletprocessor-clap.mjs";
 		
 			const urlParams = new URLSearchParams(window.location.search);
-			const wasmUrl = urlParams.get('module') || 'plugin/hello-clap/hello-clap.wasm';
+			const wasmUrl = urlParams.get('module') || 'plugin/hello-clap.wasm-clap/';
 
 			let audioContext = new AudioContext();
 			['play', 'mousedown', 'focus'].forEach(name => {
@@ -108,15 +109,11 @@
 			});
 			let audioSource = audioContext.createMediaElementSource(document.querySelector('#media'));
 			
-			let module = await WebAssembly.compileStreaming(fetch(wasmUrl));
-			let effectNode = await createClapNode(audioContext, {
+			let module = new ClapModule(wasmUrl);
+			let effectNode = await module.createNode(audioContext, {
 				numberOfInputs: 1,
 				numberOfOutputs: 1,
-				outputChannelCount: [2],
-				processorOptions: {
-					url: wasmUrl,
-					module: module,
-				}
+				outputChannelCount: [2]
 			});
 			audioSource.connect(effectNode);
 			effectNode.connect(audioContext.destination);
@@ -139,7 +136,6 @@
 				input.type = 'range';
 				input.min = param.min_value;
 				input.max = param.max_value;
-				input.value = param.value.value;
 				input.step = param.flags.stepped ? 1 : 1e-6;
 				let writeValue = input.oninput = async e => {
 					param.value = await effectNode.setParam(param.id, parseFloat(input.value));
@@ -150,6 +146,7 @@
 					input.value = param.value.value;
 					output.textContent = param.value.text;
 				};
+				readValue();
 				paramUpdateFns.push(readValue);
 				input.ondblclick = e => {
 					input.value = param.default_value;

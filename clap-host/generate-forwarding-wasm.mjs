@@ -1,6 +1,8 @@
 export default function generateForwardingModuleWasm(methodSignatures) {
 	let typeCodes = {
+		b: 0x7F, // bool (32-bit in wasm32)
 		p: 0x7F, // pointer
+		s: 0x7F, // size
 		i: 0x7F, // i32
 		I: 0x7E, // i64
 		f: 0x7D, // f32

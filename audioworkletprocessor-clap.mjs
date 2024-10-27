@@ -42,7 +42,6 @@ clapModule.addExtension("clap.web/1", {
 				web.receive(buffer, buffer.length)
 			}
 		};
-		debugger;
 	}
 });
 
@@ -54,17 +53,6 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 
 	constructor(options) {
 		super();
-
-		let inputChannelCounts = [], outputChannelCounts = [];
-		let channelCount = options.outputChannelCount || 2;
-		for (let i = 0; i < options.numberOfInputs; ++i) {
-			inputChannelCounts.push(channelCount);
-		}
-		for (let i = 0; i < options.numberOfOutputs; ++i) {
-			outputChannelCounts.push(channelCount);
-		}
-		this.inputChannelCounts = inputChannelCounts;
-		this.outputChannelCounts = outputChannelCounts;
 
 		let clapOptions = options.processorOptions;
 		if (!clapOptions) throw Error("no processorOptions");
@@ -78,6 +66,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			let clapPlugin = await module.create(pluginId);
 			Object.assign(clapPlugin.hostJs, this.makeHostMethods());
 			this.clapPlugin = clapPlugin;
+			this.clapUpdateAudioPorts();
 			this.clapActivate();
 			
 			// initial message lists plugin descriptor and remote methods
@@ -85,7 +74,8 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			this.port.postMessage({
 				desc: clapPlugin.api.clap_plugin_descriptor(clapPlugin.plugin.desc),
 				methods: Object.keys(this.remoteMethods),
-				web: web && {startPage: web.startPage}
+				web: web && {startPage: web.startPage},
+				audioPorts: {'in': this.audioPortsIn, 'out': this.audioPortsOut}
 			});
 		});
 		
@@ -234,81 +224,147 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		}
 	}
 	
-	previousInputChannels = 0;
+	clapUpdateAudioPorts() {
+		let {api, plugin} = this.clapPlugin;
+		this.audioPortsIn = [];
+		this.audioPortsOut = [];
+		let audioPortsExt = this.clapPlugin.ext['clap.audio-ports'];
+		if (audioPortsExt) {
+			for (let isInput = 0; isInput < 2; ++isInput) {
+				let list = (isInput ? this.audioPortsOut : this.audioPortsIn);
+				let count = audioPortsExt.count(isInput);
+				for (let i = 0; i < count; ++i) {
+					let portPtr = api.temp(api.clap_audio_port_info, {});
+					audioPortsExt.get(i, isInput, portPtr);
+					let port = api.clap_audio_port_info(portPtr);
+					list.push(port);
+				}
+			}
+		}
+	}
+	
 	process(inputs, outputs, parameters) {
 		if (!this.clapPlugin) return; // outputs are pre-filled with silence
 		let {api, plugin} = this.clapPlugin;
 
-		let input = inputs[0], output = outputs[0];
 		let blockLength = (outputs[0] || inputs[0])[0].length;
-		
-		// Sometimes if the input is stopped, it gives us 0 input channels, so we have to make up our own
-		if (!input.length) {
-			// use some host space to make a fake buffer without allocating
-			let fakeInput = api.tempTyped(Float32Array, blockLength);
-			fakeInput.fill(0);
-			for (let i = 0; i < this.previousInputChannels; ++i) {
-				input.push(fakeInput);
-			}
+
+		/*
+		if (inputs.length != this.audioPortsIn.length) {
+			throw Error("input audio-port mismatch");
 		}
-		this.previousInputChannels = input.length;
-		
-		// Use host memory for audio buffers
-		let inputBufferPointers = api.tempTyped(api.pointer, input.length);
-		let inputBufferBlock = api.tempTyped(Float32Array, blockLength*input.length);
-		input.forEach((channel, index) => {
-			let bufferPtr = inputBufferBlock.byteOffset + blockLength*index*4;
-			inputBufferPointers[index] = bufferPtr;
+		if (outputs.length != this.audioPortsOut.length) {
+			throw Error("output audio-port mismatch");
+		}
+		*/
 
-			let array = inputBufferBlock.subarray(blockLength*index, blockLength*(index + 1));
-			array.set(channel);
+		let audioBuffersInput = this.audioPortsIn.map((audioPortIn, portIndex) => {
+			let input = inputs[portIndex];
+			
+			// Sometimes if an input is stopped (or we're missing a port!), it gives us 0 input channels, so we have to make up our own
+			if (!input?.length) {
+				input = [];
+				// use some host space to make a fake buffer without allocating
+				let fakeInput = api.tempTyped(Float32Array, blockLength);
+				fakeInput.fill(0);
+				for (let i = 0; i < audioPortIn.channel_count; ++i) {
+					input.push(fakeInput);
+				}
+			}
+			
+			// Use host memory for audio buffers
+			let inputBufferPointers = api.tempTyped(api.pointer, audioPortIn.channel_count);
+			let inputBufferBlock = api.tempTyped(Float32Array, blockLength*audioPortIn.channel_count);
+			for (let index = 0; index < audioPortIn.channel_count; ++index) {
+				let channel = input[index%input.length];
+				let bufferPtr = inputBufferBlock.byteOffset + blockLength*index*4;
+				inputBufferPointers[index] = bufferPtr;
+
+				let array = inputBufferBlock.subarray(blockLength*index, blockLength*(index + 1));
+				array.set(channel);
+			}
+			
+			return {
+				data32: inputBufferPointers,
+				data64: 0,
+				channel_count: audioPortIn.channel_count,
+				latency: 0,
+				constant_mask: 0n // BigInt
+			};
 		});
 
-		let outputBufferPointers = api.tempTyped(api.pointer, output.length);
-		let outputBufferBlock = api.tempTyped(Float32Array, blockLength*output.length);
-		outputBufferBlock.fill(0.2); // not terrible, but deliberately not correct (for debugging)
-		output.forEach((channel, index) => {
-			let bufferPtr = outputBufferBlock.byteOffset + blockLength*index*4;
-			outputBufferPointers[index] = bufferPtr;
-			outputBufferBlock[index*blockLength] = 0.1; // bzzzzz
+		let allOutputPointers = [];
+		let audioBuffersOutput = this.audioPortsOut.map((audioPortOut, portIndex) => {
+			let outputBufferPointers = api.tempTyped(api.pointer, audioPortOut.channel_count);
+			let outputBufferBlock = api.tempTyped(Float32Array, blockLength*audioPortOut.channel_count);
+			outputBufferBlock.fill(0.2); // not terrible, but deliberately not correct (for debugging)
+			for (let index = 0; index < audioPortOut.channel_count; ++index) {
+				let bufferPtr = outputBufferBlock.byteOffset + blockLength*index*4;
+				outputBufferPointers[index] = bufferPtr;
+				outputBufferBlock[index*blockLength] = 0.1; // bzzzzz
+			}
+			allOutputPointers.push(outputBufferPointers.slice(0));
+			
+			return {
+				data32: outputBufferPointers,
+				data64: 0,
+				channel_count: audioPortOut.channel_count,
+				latency: 0,
+				constant_mask: 0n // BigInt
+			};
 		});
 
-		let audioInputPtr = api.temp(api.clap_audio_buffer, {
-			data32: inputBufferPointers,
-			data64: 0,
-			channel_count: input.length,
-			latency: 0,
-			constant_mask: 0n // BigInt
-		});
-		let audioOutputPtr = api.temp(api.clap_audio_buffer, {
-			data32: outputBufferPointers,
-			data64: 0,
-			channel_count: output.length,
-			latency: 0,
-			constant_mask: 0n // BigInt
-		});
+		// This writes them contiguously, so the first pointer can act as an array
+		let audioInputPtrs = audioBuffersInput.map(b => api.temp(api.clap_audio_buffer, b));
+		let audioOutputPtr = audioBuffersOutput.map(b => api.temp(api.clap_audio_buffer, b));
 		
 		// Write the audio buffers to the temporary scratch space
 		let processPtr = api.temp(api.clap_process, {
 			steady_time: -1n,
 			frames_count: blockLength,
 			transport: 0, //null
-			audio_inputs: audioInputPtr,
-			audio_outputs: audioOutputPtr,
-			audio_inputs_count: 1,
-			audio_outputs_count: 1,
+			audio_inputs: audioInputPtrs[0],
+			audio_outputs: audioOutputPtr[0],
+			audio_inputs_count: this.audioPortsIn.length,
+			audio_outputs_count: this.audioPortsOut.length,
 			in_events: this.clapPlugin.hostPointers.input_events,
 			out_events: this.clapPlugin.hostPointers.output_events
 		});
 		
-		plugin.process(processPtr);
+		let status = plugin.process(processPtr);
+		if (status == api.CLAP_PROCESS_ERROR) {
+			console.error("CLAP_PROCESS_ERROR");
+			return false;
+		}
 		
 		// Read audio buffers out again
-		output.forEach((channel, index) => {
-			let array = outputBufferBlock.subarray(blockLength*index, blockLength*(index + 1));
-			channel.set(array);
+		outputs.forEach((output, portIndex) => {
+			let audioPort = this.audioPortsOut[portIndex];
+			if (!audioPort) return;
+			let outputPointers = allOutputPointers[portIndex];
+			output.forEach((channel, index) => {
+				index = index%audioPort.channel_count;
+				let array = api.asTyped(Float32Array, outputPointers[index], blockLength);
+				channel.set(array);
+			});
 		});
-
+		
+		if (status === api.CLAP_PROCESS_SLEEP) {
+			return inputs.some(input => input.length); // continue only if there's more input
+		}
+		if (status === api.CLAP_PROCESS_TAIL) {
+			console.log("CLAP_PROCESS_TAIL not supported")
+			return inputs.some(input => input.length);
+		}
+		if (status === api.CLAP_PROCESS_CONTINUE_IF_NOT_QUIET) {
+			let energy = 0;
+			outputs.forEach(output => {
+				output.forEach(channel => {
+					channel.forEach(x => energy += x*x);
+				});
+			});
+			return (energy >= 1e-6);
+		}
 		return true;
 	}
 }
