@@ -57,13 +57,12 @@
 				border-radius: 0.3rem;
 				box-shadow: 0px 2px 2px -1px #0003;
 				overflow: auto;
-				
 			}
 			main > * {
 				width: 100%;
 				max-width: 500pt;
 				margin: 0 auto;
-				background: #FFF8;
+				background: #FFF;
 				border: none;
 				border-radius: 0.3rem;
 				box-shadow: 0px 2px 2px -1px #0003;
@@ -98,29 +97,41 @@
 	</head>
 	<body>
 		<img id="background" src="rainbow-texture.jpg">
-		<audio id="media" src="audio/loop.mp3" controls loop></audio>
+		<audio id="media" controls loop></audio>
 		<main>
 			<fieldset id="params"></fieldset>
 		</main>
 		<script type="module">
 			import ClapModule from "./audioworkletnode-clap.mjs";
 			// import "./audioworkletprocessor-clap.mjs";
-		
-			const urlParams = new URLSearchParams(window.location.search);
-			const wasmUrl = urlParams.get('module') || 'plugin/hello-clap.wasm-clap/';
+
+			let queryParams = new URLSearchParams(window.location.search);
+			function updateQuery() {
+				history.replaceState(null, null, '?' + queryParams);
+			}
+			console.log(queryParams);
 
 			let audioContext = new AudioContext();
 			['play', 'mousedown', 'focus'].forEach(name => {
 				window.addEventListener(name, e => audioContext.resume(name), {capture: true});
 			});
-			let audioSource = audioContext.createMediaElementSource(document.querySelector('#media'));
+			let audioElement = document.querySelector('audio');
+			audioElement.src = queryParams.get('audio') || 'audio/loop.mp3';
+			let audioSource = audioContext.createMediaElementSource(audioElement);
 			
+			const wasmUrl = queryParams.get('module') || 'plugin/hello-clap.wasm-clap/';
 			let module = new ClapModule(wasmUrl);
 			let effectNode = await module.createNode(audioContext, {
 				numberOfInputs: 1,
 				numberOfOutputs: 1,
 				outputChannelCount: [2]
 			});
+			if (queryParams.get('state')) {
+				let binary = atob(queryParams.get('state').replace(/-/g, '+').replace(/_/g, '/'));
+				let array = new Uint8Array(binary.length);
+				array.forEach((c, i) => array[i] = binary.charCodeAt(i));
+				await effectNode.loadState(array.buffer);
+			}
 			audioSource.connect(effectNode);
 			effectNode.connect(audioContext.destination);
 			globalThis.effectNode = effectNode;
@@ -128,6 +139,20 @@
 			let paramUpdateFns = [];
 			effectNode.events.params_rescan = flags => {
 				paramUpdateFns.forEach(fn => fn());
+			};
+			let updateQueryStateTimer = null;
+			effectNode.events.state_mark_dirty = async () => {
+				if (updateQueryStateTimer) return;
+				updateQueryStateTimer = setTimeout(async _ => {
+					updateQueryStateTimer = null;
+					
+					let state = await effectNode.saveState();
+					state = new Uint8Array(ArrayBuffer.isView(state) ? state.buffer : state);
+					let binary = "";
+					state.forEach(c => binary += String.fromCharCode(c));
+					queryParams.set('state', btoa(binary).replace(/\+/g, '-').replace(/\//g, '_'));
+					updateQuery();
+				}, 100);
 			};
 			
 			function makeSlider(param) {

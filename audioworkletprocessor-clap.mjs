@@ -11,7 +11,7 @@ clapModule.addExtension("clap.web/1", {
 			return false;
 		},
 		// This is the name on the host struct, so it means the plugin has sent us a message
-		ext_web_send(istreamPtr) {
+		ext_web_send(voidPointer, length) {
 			return false;
 		}
 	},
@@ -100,14 +100,54 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	
 	webIsOpen = false;
 	
+	streamInput = {pointer: 0, length: 0};
+	streamOutput = {
+		buffer: new Uint8Array(16284),
+		index: 0,
+		result: new Uint8Array(0),
+		clear() {
+			this.index = 0;
+			this.result = this.buffer.subarray(0, 0);
+		}
+	};
+	
 	pendingEvents = [];
 	makeHostMethods() {
 		return {
 			input_events_size: () => this.pendingEvents.length,
 			input_events_get: i => this.pendingEvents[i],
 			output_events_try_push: ptr => false,
+			
+			istream_read: (voidPointer, length) => {
+				length = Number(length);
+				let streamInput = this.streamInput;
+				if (!streamInput) throw Error("set .clapStreamInput={pointer:..., length: ...} before passing an istream");
+				let bytes = Math.min(length, streamInput.length);
+				if (bytes > 0) {
+					let tmpBlock = this.clapPlugin.api.asTyped(Uint8Array, streamInput.pointer, bytes);
+					let readBlock = this.clapPlugin.api.asTyped(Uint8Array, voidPointer, bytes);
+					readBlock.set(tmpBlock);
+					streamInput.pointer += bytes;
+					streamInput.length -= bytes;
+				}
+				return BigInt(bytes);
+			},
+			ostream_write: (voidPointer, length) => {
+				length = Number(length);
+				let streamOutput = this.streamOutput;
+				let bytes = Math.min(length, streamOutput.buffer.length - streamOutput.index);
+				if (bytes > 0) {
+					let writeBlock = this.clapPlugin.api.asTyped(Uint8Array, voidPointer, bytes);
+					let bufferBlock = streamOutput.buffer.subarray(streamOutput.index, bytes);
+					bufferBlock.set(writeBlock);
+					streamOutput.index += bytes;
+					streamOutput.result = streamOutput.buffer.subarray(0, streamOutput.index);
+				}
+				if (!bytes && length > 0) return -1n; // error (we ran out of space);
+				return BigInt(bytes);
+			},
+			
 			ext_params_rescan: flags => {
-				let params = {};
 				this.port.postMessage(['params_rescan', flags]);
 			},
 			ext_web_is_open: () => this.webIsOpen,
@@ -117,11 +157,41 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 				let message8 = this.clapPlugin.api.asTyped(Uint8Array, ptr, length);
 				let message = message8.slice().buffer;
 				this.port.postMessage(message, [message]); // copy the buffer, and transfer ownership of the copy
+			},
+			ext_state_mark_dirty: () => {
+				this.port.postMessage(['state_mark_dirty', null]);
 			}
 		};
 	};
 	
 	remoteMethods = {
+		saveState() {
+			let plugin = this.clapPlugin;
+			let state = plugin.ext['clap.state'];
+			if (!state) throw Error("plugin doesn't support clap.state");
+			this.streamOutput.clear();
+			if (!state.save(plugin.hostPointers.ostream)) {
+				throw Error("state.save() returned false");
+			}
+			let stateArray = this.streamOutput.result.slice(); // TODO: transfer ownership, to avoid allocation/GC from this
+			return stateArray.buffer;
+		},
+		loadState(stateArray) {
+			stateArray = new Uint8Array(ArrayBuffer.isView(stateArray) ? stateArray.buffer : stateArray);
+
+			let plugin = this.clapPlugin;
+			let state = plugin.ext['clap.state'];
+			if (!state) throw Error("plugin doesn't support clap.state");
+			
+			let tmpArr = plugin.api.tempTyped(Uint8Array, stateArray.length);
+			tmpArr.set(stateArray);
+			this.streamInput = {pointer: tmpArr.byteOffset, length: stateArray.length};
+			
+			if (!state.load(plugin.hostPointers.istream)) {
+				throw Error("state.load() returned false");
+			}
+			return true;
+		},
 		setParam(id, value) {
 			let plugin = this.clapPlugin;
 			let params = plugin.ext['clap.params'];

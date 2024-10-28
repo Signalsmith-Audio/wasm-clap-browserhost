@@ -332,7 +332,7 @@ export default function clapInterface(instance, hostMemorySize=1024*1024, logFn=
 					overflowCheck();
 					let result = wasmFn(...args);
 					resetView(); // any WASM call might've grown the memory
-					if (--funcCallDepth == 0) resetScratch(); // we don't erase the data, but we reset it before the next function
+					if (--funcCallDepth == 0) resetScratch(); // we don't erase the data, but we reset the pointer, so we'll overwrite it on .save() or the next function call
 					return result;
 				};
 			},
@@ -713,12 +713,12 @@ export default function clapInterface(instance, hostMemorySize=1024*1024, logFn=
 	// stream.h
 	addTypes({
 		clap_istream: struct(
-			{ctd: pointer},
-			{read: func(pointer, pointer, u64)}
+			{ctx: pointer},
+			{read: func(pointer, pointer, i64)}
 		),
 		clap_ostream: struct(
-			{ctd: pointer},
-			{write: func(pointer, pointer, u64)}
+			{ctx: pointer},
+			{write: func(pointer, pointer, i64)}
 		),
 	});
 

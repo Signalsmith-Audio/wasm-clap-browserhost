@@ -3,6 +3,7 @@ import clapInterface from"./clap-interface.mjs";
 
 import HostedPlugin from "./hosted-plugin.mjs";
 import "./ext/log.mjs";
+import "./ext/state.mjs";
 import "./ext/params.mjs";
 import "./ext/audio-ports.mjs";
 
@@ -21,6 +22,7 @@ async function clapHostBinding(moduleInstance, api, factory) {
 			hostMethodImports[key] = (hostPointer, ...args) => {
 				api.memoryMaybeChanged(); // we've been called _from_ native code - it might've resized before this point
 				let entry = hostPointerMap[hostPointer];
+				if (!entry) throw Error("WASM->JS callback with unfamiliar pointer");
 				return entry.m_methods[key].call(entry.m_this, ...args);
 			};
 		}

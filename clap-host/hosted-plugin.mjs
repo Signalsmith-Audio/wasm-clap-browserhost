@@ -136,7 +136,15 @@ export default class HostedPlugin {
 			output_events: api.save(api.clap_output_events, {
 				ctx: 0,
 				try_push: methods.output_events_try_push
-			})
+			}),
+			istream: api.save(api.clap_istream, {
+				ctx: 0,
+				read:methods.istream_read
+			}),
+			ostream: api.save(api.clap_ostream, {
+				ctx: 0,
+				write:methods.ostream_write
+			}),
 		});
 		
 		Object.freeze(hostPointers);
