@@ -10,8 +10,9 @@
 			}
 			body {
 				display: grid;
-				grid-template-areas: "audio" "main";
+				grid-template-areas: "audio buttons" "main main";
 				grid-template-rows: min-content 1fr;
+				grid-template-columns: 1fr 6rem;
 				
 				position: fixed;
 				margin: 0;
@@ -46,8 +47,41 @@
 					transform: rotate(90deg);
 				}
 			}
+			#buttons {
+				grid-area: buttons;
+				display: flex;
+				align-items: stretch;
+				justify-content: stretch;
+			}
+			button {
+				font: inherit;
+				border: 2px solid #CCC;
+				background: linear-gradient(#FFF, #DDD);
+				border-width: 2px 1px;
+				flex-grow: 1;
+				cursor: pointer;
+			}
+			button:focus {
+				border-color: #AAA;
+			}
+			button:hover {
+				filter: brightness(1.2);
+				-webkit-filter: brightness(1.2);
+			}
+			button:active {
+				background: linear-gradient(#DDD, #FFF);
+				border-color: #888;
+			}
+			button:first-child {
+				border-left-width: 2px;
+				border-radius: 0.5rem 0 0 0.5rem;
+			}
+			button:last-child {
+				border-right-width: 2px;
+				border-radius: 0 0.5rem 0.5rem 0;
+			}
 			main {
-				grid-area: 'main';
+				grid-area: main;
 				display: flex;
 				padding: 1rem;
 				gap: 1rem;
@@ -98,12 +132,18 @@
 	<body>
 		<img id="background" src="rainbow-texture.jpg">
 		<audio id="media" controls loop></audio>
+		<div id="buttons">
+			<button id="button-link">🔗</button>
+			<button id="button-reset">❌</button>
+		</div>
 		<main>
 			<fieldset id="params"></fieldset>
 		</main>
 		<script type="module">
 			import ClapModule from "./audioworkletnode-clap.mjs";
 			// import "./audioworkletprocessor-clap.mjs";
+			
+			let $ = document.querySelector.bind(document);
 
 			let queryParams = new URLSearchParams(window.location.search);
 			function updateQuery() {
@@ -111,11 +151,22 @@
 			}
 			console.log(queryParams);
 
+			$('#button-link').onclick = async _ => {
+				navigator.clipboard.writeText(location.href);
+				await updateQueryState();
+				navigator.clipboard.writeText(location.href);
+			};
+			$('#button-reset').onclick = _ => {
+				queryParams.delete('state');
+				// Reloads the whole page
+				location.href = '?' + queryParams;
+			};
+
 			let audioContext = new AudioContext();
 			['play', 'mousedown', 'focus'].forEach(name => {
 				window.addEventListener(name, e => audioContext.resume(name), {capture: true});
 			});
-			let audioElement = document.querySelector('audio');
+			let audioElement = $('audio');
 			audioElement.src = queryParams.get('audio') || 'audio/loop.mp3';
 			let audioSource = audioContext.createMediaElementSource(audioElement);
 			
@@ -141,22 +192,23 @@
 				paramUpdateFns.forEach(fn => fn());
 			};
 			let updateQueryStateTimer = null;
+			async function updateQueryState() {
+				updateQueryStateTimer = null;
+				
+				let state = await effectNode.saveState();
+				state = new Uint8Array(ArrayBuffer.isView(state) ? state.buffer : state);
+				let binary = "";
+				state.forEach(c => binary += String.fromCharCode(c));
+				queryParams.set('state', btoa(binary).replace(/\+/g, '-').replace(/\//g, '_'));
+				updateQuery();
+			}
 			effectNode.events.state_mark_dirty = async () => {
 				if (updateQueryStateTimer) return;
-				updateQueryStateTimer = setTimeout(async _ => {
-					updateQueryStateTimer = null;
-					
-					let state = await effectNode.saveState();
-					state = new Uint8Array(ArrayBuffer.isView(state) ? state.buffer : state);
-					let binary = "";
-					state.forEach(c => binary += String.fromCharCode(c));
-					queryParams.set('state', btoa(binary).replace(/\+/g, '-').replace(/\//g, '_'));
-					updateQuery();
-				}, 100);
+				updateQueryStateTimer = setTimeout(updateQueryState, 100);
 			};
 			
 			function makeSlider(param) {
-				let group = document.querySelector('#params');
+				let group = $('#params');
 				let label = document.createElement('label');
 				
 				let name = document.createElement('span');
@@ -196,7 +248,7 @@
 			
 			if (effectNode.openInterface) {
 				let iframe = effectNode.openInterface();
-				document.querySelector('main').append(iframe);
+				$('main').append(iframe);
 			}
 		</script>
 	</body>
