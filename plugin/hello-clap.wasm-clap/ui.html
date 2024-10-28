@@ -6,8 +6,21 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<style>
 			body {
-				background: #FFFF;
+				background: #FFF;
+				color: #000;
+				margin: 0;
+				padding: 1rem;
+				box-sizing: border-box;
+				min-height: 100vh;
+				overscroll-behavior: none;
 			}
+			
+			#logo {
+				width: 100px;
+				height: 100px;
+				float: right;
+			}
+
 			h2 {
 				margin: 0;
 				text-align: center;
@@ -16,16 +29,22 @@
 		</style>
 	</head>
 	<body>
-		<h2>Hello, CLAP!</h2>
-		<hr>
-		<p>This is a webview UI, which the plugin supplied the URL for (relative to its own location).</p>
-		<p>Every process() call, the plugin uses the <code>clap.web/1</code> extension to send one of two messages.  We count the total number of each one here.</p>
-		<p>When you press this button, this page sends a "toggle" message back, which the plugin handles by flipping a boolean.</p>
-		<button id="toggle">toggle</button>
-		<pre id="output"></pre>
-		<hr>
-		<p>This button resets the counters, and also sends a "reset" message to the plugin, which changes the parameters.</p>
-		<button id="reset">reset</button>
+		<img id="logo" src="images/CLAP Full Logo.svg">
+		<header>
+			<h2>Hello, CLAP!</h2>
+			<hr>
+			<p>This is a webview UI, which the plugin supplied the URL for (relative to its own location).</p>
+		</header>
+		<section>
+			<p>Every process() call, the plugin uses the <code>clap.web/1</code> extension to send one of two messages.  We count the total number of each one here.</p>
+			<p>When you press this button, this page sends a "toggle" message back, which the plugin handles by flipping a boolean.</p>
+			<button id="toggle">toggle</button>
+			<pre id="output"></pre>
+		</section>
+		<section>
+			<p>This button resets the counters, and also sends a "reset" message to the plugin, which changes the parameters.</p>
+			<button id="reset">reset</button>
+		</section>
 		<script>
 			let counters = {foo: 0, bar: 0};
 			addEventListener('message', e => {
