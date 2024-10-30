@@ -12,7 +12,7 @@
 				display: grid;
 				grid-template-areas: "audio buttons" "main main";
 				grid-template-rows: min-content 1fr;
-				grid-template-columns: 1fr 6rem;
+				grid-template-columns: 1fr 8rem;
 				
 				position: fixed;
 				margin: 0;
@@ -25,6 +25,13 @@
 				overflow: auto;
 				
 				font-family: Verdana, sans-serif;
+			}
+			@media (max-width: 400pt) {
+				body {
+					grid-template-areas: "audio" "buttons" "main";
+					grid-template-rows: min-content 2rem 1fr;
+					grid-template-columns: 1fr;
+				}
 			}
 			audio {
 				grid-area: audio;
@@ -133,8 +140,9 @@
 		<img id="background" src="rainbow-texture.jpg">
 		<audio id="media" controls loop></audio>
 		<div id="buttons">
-			<button id="button-link">🔗</button>
-			<button id="button-reset">❌</button>
+			<button id="button-link" title="copy link with state">🔗</button>
+			<button id="button-stopengine" title="stop audio engine">🛑</button>
+			<button id="button-reset" title="reset / reload">❌</button>
 		</div>
 		<main>
 			<fieldset id="params"></fieldset>
@@ -142,18 +150,29 @@
 		<script type="module">
 			import ClapModule from "./audioworkletnode-clap.mjs";
 			// import "./audioworkletprocessor-clap.mjs";
-			
-			let $ = document.querySelector.bind(document);
 
 			let queryParams = new URLSearchParams(window.location.search);
 			function updateQuery() {
 				history.replaceState(null, null, '?' + queryParams);
 			}
-			console.log(queryParams);
+
+			let $ = document.querySelector.bind(document);
+			let audioContext = new AudioContext();
+			['mousedown', 'focus'].forEach(name => {
+				window.addEventListener(name, e => {
+					if (queryParams.has('autostart')) audioContext.resume(name);
+				}, {capture: true});
+			});
+			if (!queryParams.has('autostart')) {
+				audioContext.suspend();
+			}
+			['play'].forEach(name => {
+				window.addEventListener(name, e => audioContext.resume(name), {capture: true});
+			});
 			
 			function blip(message, event) {
 				let span = document.createElement('span');
-				span.setAttribute('style', 'display:block;padding: 0.5rem;position:absolute;background:#FFF;color:#555;font-size:0.8rem;border-radius:0.3rem;box-shadow:0px 2px 4px #0008;');
+				span.setAttribute('style', 'display:block;padding: 0.5rem;position:absolute;background:#FFF;color:#555;font-size:0.8rem;border-radius:0.3rem;box-shadow:0px 2px 4px #0008;z-index:10000');
 				span.textContent = message;
 				(event?.target || document.body).append(span);
 				span.onclick = e => {
@@ -170,16 +189,15 @@
 				await navigator.clipboard.writeText(location.href);
 				blip("copied", e);
 			};
+			$('#button-stopengine').onclick = _ => {
+				audioContext.suspend();
+			};
 			$('#button-reset').onclick = _ => {
 				queryParams.delete('state');
 				// Reloads the whole page
 				location.href = '?' + queryParams;
 			};
 
-			let audioContext = new AudioContext();
-			['play', 'mousedown', 'focus'].forEach(name => {
-				window.addEventListener(name, e => audioContext.resume(name), {capture: true});
-			});
 			let audioElement = $('audio');
 			audioElement.src = queryParams.get('audio') || 'audio/loop.mp3';
 			let audioSource = audioContext.createMediaElementSource(audioElement);
