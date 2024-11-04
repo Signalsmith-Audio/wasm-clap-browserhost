@@ -158,6 +158,11 @@
 
 			let $ = document.querySelector.bind(document);
 			let audioContext = new AudioContext();
+			
+			let audioElement = $('audio');
+			audioElement.src = queryParams.get('audio') || 'audio/loop.mp3';
+			let audioSource = audioContext.createMediaElementSource(audioElement);
+			
 			['mousedown', 'focus'].forEach(name => {
 				window.addEventListener(name, e => {
 					if (queryParams.has('autostart')) audioContext.resume(name);
@@ -190,6 +195,7 @@
 				blip("copied", e);
 			};
 			$('#button-stopengine').onclick = _ => {
+				audioElement.pause();
 				audioContext.suspend();
 			};
 			$('#button-reset').onclick = _ => {
@@ -197,10 +203,6 @@
 				// Reloads the whole page
 				location.href = '?' + queryParams;
 			};
-
-			let audioElement = $('audio');
-			audioElement.src = queryParams.get('audio') || 'audio/loop.mp3';
-			let audioSource = audioContext.createMediaElementSource(audioElement);
 			
 			const wasmUrl = queryParams.get('module') || 'plugin/hello-clap.wasm-clap/';
 			let module = new ClapModule(wasmUrl);
