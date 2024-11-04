@@ -134,6 +134,11 @@
 			.name {
 				text-align: right;
 			}
+			.file-drop {
+				opacity: 0.5;
+				filter: greyscale(0.5);
+				-webkit-filter: greyscale(0.5);
+			}
 		</style>
 	</head>
 	<body>
@@ -162,6 +167,26 @@
 			let audioElement = $('audio');
 			audioElement.src = queryParams.get('audio') || 'audio/loop.mp3';
 			let audioSource = audioContext.createMediaElementSource(audioElement);
+			
+			document.body.addEventListener('dragover', e => {
+				document.body.classList.add('file-drop');
+				e.preventDefault();
+				e.stopPropagation();
+			});
+			document.body.addEventListener('dragcancel', e => {
+				document.body.classList.remove('file-drop');
+			});
+			document.body.addEventListener('drop', e => {
+				document.body.classList.remove('file-drop');
+				let file = e.dataTransfer.items?.[0]?.getAsFile?.() || e.dataTransfer.files?.[0];
+				if (/^blob:/.test(audioElement.src)) {
+					URL.revokeObjectURL(audioElement.src);
+				}
+				audioElement.src = URL.createObjectURL(file);
+				audioElement.play();
+				e.preventDefault();
+				e.stopPropagation();
+			});
 			
 			['mousedown', 'focus'].forEach(name => {
 				window.addEventListener(name, e => {
