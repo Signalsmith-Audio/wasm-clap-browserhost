@@ -99,16 +99,23 @@ export default class ClapModule {
 							effectNode.port.postMessage(data);
 						}
 					};
+					let visibilityHandler;
 					effectNode.openInterface = () => {
 						iframe = document.createElement('iframe');
 						window.addEventListener('message', messageHandler);
+						window.addEventListener('visibilitychange', visibilityHandler = () => {
+							effectNode.webOpen(true, !document.hidden);
+						});
 						iframe.src = new URL(web.startPage, this.url);
-						effectNode.webOpen(true);
+						effectNode.webOpen(true, !document.hidden);
 						return iframe;
 					};
 					effectNode.closeInterface = () => {
 						effectNode.webOpen(false);
-						if (iframe) window.removeEventListener('message', messageHandler);
+						if (iframe) {
+							window.removeEventListener('message', messageHandler);
+							window.removeEventListener('visibilitychange', visibilityHandler);
+						}
 						iframe = null;
 					}
 				}

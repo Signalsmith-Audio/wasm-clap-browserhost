@@ -94,6 +94,27 @@ function wasi_snapshot_preview1(args=[], env={}, fileResolver) {
 			}
 			view.setUint32(pWritten, written, true);
 			return 0;
+		},
+		fd_read(fd, pVectors, nVectors, pWritten) {
+			console.log("fd_read()");
+			let file = fileHandles[fd];
+			if (!file) file = {
+				read() {
+				}
+			};
+
+			let view = new DataView(memory.buffer);
+			let arr8 = new Uint8Array(memory.buffer);
+			// Everything goes to the console
+			let written = 0;
+			for (let n = 0; n < nVectors; ++n) {
+				let pData = view.getUint32(pVectors + n*8, true);
+				let length = view.getUint32(pVectors + n*8 + 4, true);
+				file.read(arr8.subarray(pData, pData + length));
+				written += length;
+			}
+			view.setUint32(pWritten, written, true);
+			return 0;
 		}
 	};
 

@@ -216,7 +216,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			});
 			this.pendingEvents = [eventPtr];
 			// Single-threaded, so no reason not to immediately flush
-			params.flush(plugin.hostPointers.input_events, plugin.hostPointers.input_events);
+			params.flush(plugin.hostPointers.input_events, plugin.hostPointers.output_events);
 			this.pendingEvents = [];
 			
 			return this.remoteMethods.getParam.call(this, id);
@@ -274,7 +274,8 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			}
 			return paramInfo;
 		},
-		webOpen(isOpen) {
+		webOpen(isOpen, isShowing) {
+			console.log('isShowing should go through the clap.gui extension');
 			return this.webIsOpen = isOpen;
 		}
 	};
