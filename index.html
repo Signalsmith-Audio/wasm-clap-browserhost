@@ -234,7 +234,7 @@
 			};
 			
 			const wasmUrl = queryParams.get('module') || 'plugin/hello-clap.wclap.tar.gz';
-			//await serviceWorkerReady;
+			await serviceWorkerReady;
 			let module = new ClapModule(wasmUrl);
 			let effectNode = await module.createNode(audioContext, {
 				numberOfInputs: 1,
