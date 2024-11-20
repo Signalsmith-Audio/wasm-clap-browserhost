@@ -142,6 +142,10 @@
 		</style>
 	</head>
 	<body>
+		<script>
+			let serviceWorkerReady = navigator.serviceWorker.register("./wclap-service-worker.js", null&&{updateViaCache:'none'})
+			.then(registration => void(registration.update())) // check for new version
+		</script>
 		<img id="background" src="rainbow-texture.jpg">
 		<audio id="media" controls loop></audio>
 		<div id="buttons">
@@ -155,7 +159,7 @@
 		<script type="module">
 			import ClapModule from "./audioworkletnode-clap.mjs";
 			// import "./audioworkletprocessor-clap.mjs";
-
+			
 			let queryParams = new URLSearchParams(window.location.search);
 			function updateQuery() {
 				history.replaceState(null, null, '?' + queryParams);
@@ -229,7 +233,8 @@
 				location.href = '?' + queryParams;
 			};
 			
-			const wasmUrl = queryParams.get('module') || 'plugin/hello-clap.wasm-clap/';
+			const wasmUrl = queryParams.get('module') || 'plugin/hello-clap.wclap.tar.gz';
+			//await serviceWorkerReady;
 			let module = new ClapModule(wasmUrl);
 			let effectNode = await module.createNode(audioContext, {
 				numberOfInputs: 1,
