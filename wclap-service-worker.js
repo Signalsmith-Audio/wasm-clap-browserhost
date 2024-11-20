@@ -1,39 +1,47 @@
 const CACHE_KEY = "wclap";
 
 self.addEventListener("install", e => {
-	console.log("WCLAP Service Worker: installed");
+	//console.log("WCLAP Service Worker: installed");
 	self.skipWaiting(); // don't wait for all existing pages to close
 })
 self.addEventListener("activate", e => {
-	console.log("WCLAP Service Worker: activated");
+	//console.log("WCLAP Service Worker: activated");
 	e.waitUntil(clients.claim()); // immediately start intercepting requests
 });
 
 self.addEventListener("fetch", e => {
 	let request = e.request;
-	console.log("WCLAP Service Worker: request", request);
+	//console.log("WCLAP Service Worker: request", request);
 	
-	function altRequest(url) {
-		return new Request(url); // TODO: same credentials/etc
-	}
-
-	if (request.method == 'GET' && /\.tar\.gz\//.test(request.url)) {
-		let tarGzUrl = request.url.replace(/\.tar\.gz\/.*/, '.tar.gz');
-		e.respondWith((async () => {
+	e.respondWith((async () => {
+		let cachedResponse = await caches.match(request);
+		if (cachedResponse) return cachedResponse;
+	
+		if (request.method == 'GET' && /\.tar\.gz\//.test(request.url)) {
+			let tarGzUrl = request.url.replace(/\.tar\.gz\/.*/, '.tar.gz');
 			// If we fetched the TAR instead, would it be cached?
 			let tarRequest = altRequest(tarGzUrl);
-			const cachedTar = await caches.match(tarRequest);
+			let cachedTar = await caches.match(tarRequest);
+
 			// If the TAR is not cached, fetch and decompress it
 			if (!cachedTar) {
-				let tarResponse = await fetch(tarRequest);
-				if (!tarResponse.ok) return tar;
-				await addCacheFromTarGz(tarResponse, tarGzUrl + "/");
+				await (await caches.open(CACHE_KEY)).add(tarRequest);
+				cachedTar = await caches.match(tarRequest);
+				if (cachedTar) {
+					await addCacheFromTarGz(cachedTar, tarGzUrl + "/");
+				}
 			}
-			return await caches.match(request) || new Response(null, {status: 404});
-		})());
-	} else {
-		e.respondWith(caches.match(request)
-			.then(cached => cached || fetch(request)));
+
+			// Check the cache again
+			cachedResponse = await caches.match(request);
+			return cachedResponse || new Response(null, {status: 404});
+		} else {
+			return fetch(request);
+		}
+	})());
+
+	function altRequest(url) {
+		return new Request(url); // TODO: same credentials/etc
 	}
 
 	async function addCacheFromTarGz(tarResponse, baseUrl) {

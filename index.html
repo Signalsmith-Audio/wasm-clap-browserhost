@@ -143,8 +143,10 @@
 	</head>
 	<body>
 		<script>
-			let serviceWorkerReady = navigator.serviceWorker.register("./wclap-service-worker.js", null&&{updateViaCache:'none'})
-			.then(registration => void(registration.update())) // check for new version
+			navigator.serviceWorker.register("./wclap-service-worker.js", {updateViaCache: 'none'});
+			let serviceWorkerReady = navigator.serviceWorker.ready;
+			// an extra delay Chrome sometimes calls this just *before* it's ready
+			serviceWorkerReady = serviceWorkerReady.then(_ => new Promise(pass => setTimeout(pass, 10)));
 		</script>
 		<img id="background" src="rainbow-texture.jpg">
 		<audio id="media" controls loop></audio>
