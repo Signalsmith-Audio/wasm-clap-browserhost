@@ -143,10 +143,26 @@
 	</head>
 	<body>
 		<script>
-			navigator.serviceWorker.register("./wclap-service-worker.js", {updateViaCache: 'none'});
-			let serviceWorkerReady = navigator.serviceWorker.ready;
-			// an extra delay Chrome sometimes calls this just *before* it's ready
-			serviceWorkerReady = serviceWorkerReady.then(_ => new Promise(pass => setTimeout(pass, 10)));
+			let serviceWorkerReady = (async serviceWorker => {
+				if (!serviceWorker.controller) {
+					// either there's no controller (no registations), or it's a hard-refresh (existing registrations will be bypassed, so remove them)
+					const registrations = await serviceWorker.getRegistrations();
+					await Promise.all(registrations.map(r => r.unregister()));
+
+					await serviceWorker.register("./wclap-service-worker.js", {updateViaCache: 'all'});
+				}
+				// Poll until it's ready (takes a bit longer on hard refresh)
+				return new Promise(pass => {
+					let ms = 10;
+					function check() {
+						if (serviceWorker.controller) return pass(serviceWorker.controller.scriptURL + "/");
+						console.log("waiting for serviceWorker");
+						if (ms > 100) return location.reload(); // If there's another tab open still holding onto the previous registration, we'd wait forever, so just refresh again
+						setTimeout(check, ms += 10);
+					}
+					check();
+				});
+			})(navigator.serviceWorker);
 		</script>
 		<img id="background" src="rainbow-texture.jpg">
 		<audio id="media" controls loop></audio>
@@ -235,8 +251,11 @@
 				location.href = '?' + queryParams;
 			};
 			
-			const wasmUrl = queryParams.get('module') || 'plugin/hello-clap.wclap.tar.gz';
-			await serviceWorkerReady;
+			let tarGzPrefixUrl = await serviceWorkerReady;
+			let wasmUrl = queryParams.get('module') || 'plugin/hello-clap.wclap.tar.gz';
+			if (/\.tar\.gz$/.test(wasmUrl)) {
+				wasmUrl = tarGzPrefixUrl + encodeURIComponent(new URL(wasmUrl, location).href) + "/";
+			}
 			let module = new ClapModule(wasmUrl);
 			let effectNode = await module.createNode(audioContext, {
 				numberOfInputs: 1,

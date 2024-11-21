@@ -1,36 +1,26 @@
 const CACHE_KEY = "wclap";
+const PROXY_BASE = self.location.href + "/";
 
 self.addEventListener("install", e => {
-	//console.log("WCLAP Service Worker: installed");
 	self.skipWaiting(); // don't wait for all existing pages to close
 })
 self.addEventListener("activate", e => {
-	//console.log("WCLAP Service Worker: activated");
-	e.waitUntil(clients.claim()); // immediately start intercepting requests
+	e.waitUntil(clients.claim());
 });
 
 self.addEventListener("fetch", e => {
 	let request = e.request;
-	//console.log("WCLAP Service Worker: request", request);
-	
 	e.respondWith((async () => {
 		let cachedResponse = await caches.match(request);
 		if (cachedResponse) return cachedResponse;
-	
-		if (request.method == 'GET' && /\.tar\.gz\//.test(request.url)) {
-			let tarGzUrl = request.url.replace(/\.tar\.gz\/.*/, '.tar.gz');
-			// If we fetched the TAR instead, would it be cached?
-			let tarRequest = altRequest(tarGzUrl);
-			let cachedTar = await caches.match(tarRequest);
-
-			// If the TAR is not cached, fetch and decompress it
-			if (!cachedTar) {
-				await (await caches.open(CACHE_KEY)).add(tarRequest);
-				cachedTar = await caches.match(tarRequest);
-				if (cachedTar) {
-					await addCacheFromTarGz(cachedTar, tarGzUrl + "/");
-				}
-			}
+		if (request.method == 'GET' && request.url.startsWith(PROXY_BASE)) {
+			let suffix = request.url.substr(PROXY_BASE.length);
+			let suffixTrimmed = suffix.replace(/\/.*/, '');
+			// next path component is .tar.gz URL, percent-encoded
+			let bundleUrl = decodeURIComponent(suffixTrimmed);
+			
+			let tarResponse = await fetch(altRequest(bundleUrl));
+			await addCacheFromTarGz(tarResponse, PROXY_BASE + suffixTrimmed + "/");
 
 			// Check the cache again
 			cachedResponse = await caches.match(request);

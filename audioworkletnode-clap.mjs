@@ -12,7 +12,7 @@ export default class ClapModule {
 		
 		let url = moduleOptions?.url;
 		// If we specify a directory (ends in `/`) then use `module.wasm`
-		if (/\.(wasm-clap|wclap(\.tar\.gz)?)$/.test(url)) url += '/'; // Assume .wasm-clap is a bundle directory
+		if (/\.(wasm-clap|wclap)$/.test(url)) url += '/'; // Assume .wasm-clap is a bundle directory
 		if (/\/$/.test(url)) url += "module.wasm";
 		this.url = new URL(url, location.href).href;
 
