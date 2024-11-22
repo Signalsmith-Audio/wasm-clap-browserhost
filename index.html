@@ -149,6 +149,9 @@
 					const registrations = await serviceWorker.getRegistrations();
 					await Promise.all(registrations.map(r => r.unregister()));
 
+					// Also delete the associated cache
+					caches.delete("wclap");
+
 					await serviceWorker.register("./wclap-service-worker.js", {updateViaCache: 'all'});
 				}
 				// Poll until it's ready (takes a bit longer on hard refresh)
@@ -252,7 +255,7 @@
 			};
 			
 			let tarGzPrefixUrl = await serviceWorkerReady;
-			let wasmUrl = queryParams.get('module') || 'plugin/hello-clap.wclap.tar.gz';
+			let wasmUrl = queryParams.get('module') || 'plugin/freq-shifter.wclap.tar.gz';
 			if (/\.tar\.gz$/.test(wasmUrl)) {
 				wasmUrl = tarGzPrefixUrl + encodeURIComponent(new URL(wasmUrl, location).href) + "/";
 			}
