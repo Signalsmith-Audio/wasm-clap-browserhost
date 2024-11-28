@@ -71,7 +71,7 @@ export default class ClapModule {
 					let data = e.data;
 					if (data instanceof ArrayBuffer) {
 						// it's a message from the plugin
-						if (iframe) iframe.contentWindow.postMessage(data);
+						if (iframe) iframe.contentWindow.postMessage(data, '*');
 						return;
 					}
 					if (typeof data[0] === 'string') {
