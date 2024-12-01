@@ -115,6 +115,12 @@ function wasi_snapshot_preview1(args=[], env={}, fileResolver) {
 			}
 			view.setUint32(pWritten, written, true);
 			return 0;
+		},
+		random_get(ptr, nBytes) { // TODO: a more secure generator
+			let arr8 = new Uint8Array(memory);
+			for (let i = 0; i < nBytes; ++i) {
+				arr8[ptr + i] = Math.floor(Math.random()*256);
+			}
 		}
 	};
 
