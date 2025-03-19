@@ -277,6 +277,9 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		webOpen(isOpen, isShowing) {
 			console.log('isShowing should go through the clap.gui extension');
 			return this.webIsOpen = isOpen;
+		},
+		performance() {
+			return {js: this.#averageJsMs, wasm: this.#averageWasmMs};
 		}
 	};
 
@@ -314,7 +317,11 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		}
 	}
 	
+	#averageJsMs = 0;
+	#averageWasmMs = 0;
+	
 	process(inputs, outputs, parameters) {
+		let jsStartTime = Date.now();
 		if (!this.clapPlugin) return; // outputs are pre-filled with silence
 		let {api, plugin} = this.clapPlugin;
 
@@ -402,7 +409,9 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			out_events: this.clapPlugin.hostPointers.output_events
 		});
 		
+		let wasmStartTime = Date.now();
 		let status = plugin.process(processPtr);
+		let wasmEndTime = Date.now();
 		if (status == api.CLAP_PROCESS_ERROR) {
 			console.error("CLAP_PROCESS_ERROR");
 			return false;
@@ -419,7 +428,11 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 				channel.set(array);
 			});
 		});
-		
+
+		let jsEndTime = Date.now();
+		this.#averageJsMs += (jsEndTime - jsStartTime - this.#averageJsMs)*0.01;
+		this.#averageWasmMs += (wasmEndTime - wasmStartTime - this.#averageWasmMs)*0.01;
+
 		if (status === api.CLAP_PROCESS_SLEEP) {
 			return inputs.some(input => input.length); // continue only if there's more input
 		}

@@ -10,9 +10,9 @@
 			}
 			body {
 				display: grid;
-				grid-template-areas: "audio buttons" "main main";
+				grid-template-areas: "audio buttons cpu" "main main main";
 				grid-template-rows: min-content 1fr;
-				grid-template-columns: 1fr 8rem;
+				grid-template-columns: 1fr 8rem 2rem;
 				
 				position: fixed;
 				margin: 0;
@@ -25,12 +25,14 @@
 				overflow: auto;
 				
 				font-family: Verdana, sans-serif;
+				background: #444;
+				color: #FFF;
 			}
 			@media (max-width: 400pt) {
 				body {
-					grid-template-areas: "audio" "buttons" "main";
+					grid-template-areas: "audio cpu" "buttons buttons" "main main";
 					grid-template-rows: min-content 2rem 1fr;
-					grid-template-columns: 1fr;
+					grid-template-columns: 1fr 2rem;
 				}
 			}
 			audio {
@@ -86,6 +88,13 @@
 			button:last-child {
 				border-right-width: 2px;
 				border-radius: 0 0.5rem 0.5rem 0;
+			}
+			#cpu {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 0.75rem;
+				opacity: 0.5;
 			}
 			main {
 				grid-area: main;
@@ -174,6 +183,7 @@
 			<button id="button-stopengine" title="stop audio engine">🛑</button>
 			<button id="button-reset" title="reset / reload">❌</button>
 		</div>
+		<div id="cpu"></div>
 		<main>
 			<fieldset id="params"></fieldset>
 		</main>
@@ -338,6 +348,14 @@
 				let iframe = effectNode.openInterface();
 				$('main').append(iframe);
 			}
+			
+			setInterval(async _ => {
+				let ms = await effectNode.performance();
+				let blockMs = 128*1000/audioContext.sampleRate;
+				let ratioWasm = ms.wasm/blockMs;
+				let ratioJs = ms.js/blockMs - ratioWasm;
+				$('#cpu').textContent = `${(ratioWasm*100).toFixed(1)}%\n${(ratioJs*100).toFixed(1)}%`;
+			}, 1000);
 		</script>
 	</body>
 </html>
