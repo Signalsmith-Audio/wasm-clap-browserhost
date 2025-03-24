@@ -81,6 +81,8 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		
 		// subsequent messages are proxied method calls
 		this.port.onmessage = async event => {
+			if (this.fatalError) return;
+			
 			let data = event.data;
 			if (data instanceof ArrayBuffer) {
 				let web = this.clapPlugin.ext['clap.web/1'];
@@ -92,10 +94,17 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			try {
 				let result = await this.remoteMethods[method].call(this, ...args);
 				this.port.postMessage([requestId, null, result]);
+				this.mainThreadCallbackIfNeeded();
 			} catch (e) {
+				this.failWithError(e);
 				this.port.postMessage([requestId, e]);
 			}
 		};
+	}
+
+	fatalError = null;
+	failWithError(e) {
+		this.fatalError = e;
 	}
 	
 	webIsOpen = false;
@@ -111,13 +120,30 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		}
 	};
 	
+	wantsMainThreadCallback = false;
+	mainThreadCallbackIfNeeded() {
+		if (!this.wantsMainThreadCallback) return;
+		this.wantsMainThreadCallback = false;
+		try {
+			this.clapPlugin.plugin.on_main_thread();
+		} catch (e) {
+			this.failWithError(e);
+		}
+	}
+	
 	pendingEvents = [];
 	makeHostMethods() {
 		return {
 			input_events_size: () => this.pendingEvents.length,
 			input_events_get: i => this.pendingEvents[i],
 			output_events_try_push: ptr => false,
-			
+
+			request_restart() {throw Error("not implemented");},
+			request_process() {throw Error("not implemented");},
+			request_callback: () => {
+				this.wantsMainThreadCallback = true;
+			},
+
 			istream_read: (voidPointer, length) => {
 				length = Number(length);
 				let streamInput = this.streamInput;
@@ -284,6 +310,8 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	};
 
 	clapActivate() {
+		if (this.fatalError) return;
+		
 		let {api, plugin} = this.clapPlugin;
 		if (!plugin.activate(sampleRate, 1, this.maxFramesCount)) {
 			console.error("plugin.activate() failed");
@@ -299,6 +327,8 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	}
 	
 	clapUpdateAudioPorts() {
+		if (this.fatalError) return;
+
 		let {api, plugin} = this.clapPlugin;
 		this.audioPortsIn = [];
 		this.audioPortsOut = [];
@@ -321,8 +351,9 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	#averageWasmMs = 0;
 	
 	process(inputs, outputs, parameters) {
+		if (this.fatalError) return false;
 		let jsStartTime = Date.now();
-		if (!this.clapPlugin) return; // outputs are pre-filled with silence
+		if (!this.clapPlugin) return true; // outputs are pre-filled with silence
 		let {api, plugin} = this.clapPlugin;
 
 		let blockLength = (outputs[0] || inputs[0])[0].length;
@@ -409,9 +440,17 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			out_events: this.clapPlugin.hostPointers.output_events
 		});
 		
-		let wasmStartTime = Date.now();
-		let status = plugin.process(processPtr);
-		let wasmEndTime = Date.now();
+		let wasmStartTime, wasmEndTime;
+		let status;
+		try {
+			wasmStartTime = Date.now();
+			status = plugin.process(processPtr);
+			this.mainThreadCallbackIfNeeded();
+			wasmEndTime = Date.now();
+		} catch (e) {
+			this.failWithError(e);
+			return false;
+		}
 		if (status == api.CLAP_PROCESS_ERROR) {
 			console.error("CLAP_PROCESS_ERROR");
 			return false;
