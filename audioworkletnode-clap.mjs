@@ -61,7 +61,7 @@ export default class ClapModule {
 		
 		return new Promise(resolve => {
 			effectNode.port.onmessage = e => {
-				let {desc, methods, web} = e.data;
+				let {desc, methods, webview} = e.data;
 				effectNode.descriptor = desc;
 				methods.forEach(addRemoteMethod);
 
@@ -92,7 +92,7 @@ export default class ClapModule {
 					}
 				};
 				
-				if (web) {
+				if (webview) {
 					let messageHandler = e => {
 						if (e.source === iframe?.contentWindow) {
 							let data = e.data;
@@ -105,14 +105,14 @@ export default class ClapModule {
 						iframe = document.createElement('iframe');
 						window.addEventListener('message', messageHandler);
 						window.addEventListener('visibilitychange', visibilityHandler = () => {
-							effectNode.webOpen(true, !document.hidden);
+							effectNode.webviewOpen(true, !document.hidden);
 						});
-						iframe.src = new URL(web.startPage, this.url);
-						effectNode.webOpen(true, !document.hidden);
+						iframe.src = new URL(webview.startPage, this.url);
+						effectNode.webviewOpen(true, !document.hidden);
 						return iframe;
 					};
 					effectNode.closeInterface = () => {
-						effectNode.webOpen(false);
+						effectNode.webviewOpen(false);
 						if (iframe) {
 							window.removeEventListener('message', messageHandler);
 							window.removeEventListener('visibilitychange', visibilityHandler);

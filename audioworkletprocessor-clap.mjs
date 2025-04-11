@@ -44,6 +44,50 @@ clapModule.addExtension("clap.web/1", {
 		};
 	}
 });
+clapModule.addExtension("clap.webview/1", {
+	wasm: {
+		ext_webview_is_open: 'ip',
+		ext_webview_send: 'ippi'
+	},
+	js: {
+		ext_webview_is_open() {
+			// never open for now
+			return false;
+		},
+		// This is the name on the host struct, so it means the plugin has sent us a message
+		ext_webview_send(voidPointer, length) {
+			return false;
+		}
+	},
+	addTypes(api, methods) {
+		api.clap_plugin_webview = api.makeStruct(
+			{provide_starting_uri: api.makeFunc(api.pointer, api.pointer, api.u32)},
+			{receive: api.makeFunc(api.pointer, api.pointer, api.u32)}
+		);
+		api.clap_host_webview = api.makeStruct(
+			{is_open: api.makeFunc(api.pointer)},
+			{send: api.makeFunc(api.pointer, api.pointer, api.u32)}
+		);
+		return api.save(api.clap_host_webview, {
+			is_open: methods.ext_webview_is_open,
+			send: methods.ext_webview_send
+		});
+	},
+	readPlugin(api, pointer, pluginPtr) {
+		let webview = api.clap_plugin_webview(pointer, pluginPtr);
+		let buffer = api.tempBytes(1024);
+		if (!webview.provide_starting_uri(buffer, 1024)) return null;
+		return {
+			startPage: api.fromArg(api.string, buffer),
+			send: message => {
+				let messageArr = new Uint8Array(message);
+				let buffer = this.api.tempTyped(Uint8Array, messageArr.length);
+				buffer.set(messageArr);
+				webview.receive(buffer, buffer.length)
+			}
+		};
+	}
+});
 
 class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	inputChannelCounts = [];
@@ -70,11 +114,11 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			this.clapActivate();
 			
 			// initial message lists plugin descriptor and remote methods
-			let web = this.clapPlugin.ext['clap.web/1'];
+			let webview = this.clapPlugin.ext['clap.webview/1'] || this.clapPlugin.ext['clap.web/1'];
 			this.port.postMessage({
 				desc: clapPlugin.api.clap_plugin_descriptor(clapPlugin.plugin.desc),
 				methods: Object.keys(this.remoteMethods),
-				web: web && {startPage: web.startPage},
+				webview: webview && {startPage: webview.startPage},
 				audioPorts: {'in': this.audioPortsIn, 'out': this.audioPortsOut}
 			});
 		});
@@ -85,8 +129,10 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			
 			let data = event.data;
 			if (data instanceof ArrayBuffer) {
-				let web = this.clapPlugin.ext['clap.web/1'];
-				if (web) web.send(data);
+
+			
+				let webview = this.clapPlugin.ext['clap.webview/1'] || this.clapPlugin.ext['clap.web/1'];
+				if (webview) webview.send(data);
 				return;
 			}
 			let [requestId, method, args] = data;
@@ -107,7 +153,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		this.fatalError = e;
 	}
 	
-	webIsOpen = false;
+	webviewIsOpen = false;
 	
 	streamInput = {pointer: 0, length: 0};
 	streamOutput = {
@@ -176,7 +222,17 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			ext_params_rescan: flags => {
 				this.port.postMessage(['params_rescan', flags]);
 			},
-			ext_web_is_open: () => this.webIsOpen,
+
+			ext_webview_is_open: () => this.webviewIsOpen,
+			// plugin sent to us
+			ext_webview_send: (ptr, length) => {
+				if (!this.webIsOpen) return false;
+				let message8 = this.clapPlugin.api.asTyped(Uint8Array, ptr, length);
+				let message = message8.slice().buffer;
+				this.port.postMessage(message, [message]); // copy the buffer, and transfer ownership of the copy
+			},
+			// Older draft version, for compatibility
+			ext_web_is_open: () => this.webviewIsOpen,
 			// plugin sent to us
 			ext_web_send: (ptr, length) => {
 				if (!this.webIsOpen) return false;
@@ -184,6 +240,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 				let message = message8.slice().buffer;
 				this.port.postMessage(message, [message]); // copy the buffer, and transfer ownership of the copy
 			},
+
 			ext_state_mark_dirty: () => {
 				this.port.postMessage(['state_mark_dirty', null]);
 			}
@@ -300,7 +357,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			}
 			return paramInfo;
 		},
-		webOpen(isOpen, isShowing) {
+		webviewOpen(isOpen, isShowing) {
 			console.log('isShowing should go through the clap.gui extension');
 			return this.webIsOpen = isOpen;
 		},
