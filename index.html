@@ -56,11 +56,12 @@
 					transform: rotate(90deg);
 				}
 			}
-			#buttons {
+			#buttons, #tabs {
 				grid-area: buttons;
 				display: flex;
 				align-items: stretch;
 				justify-content: stretch;
+				min-height: 2rem;
 			}
 			button {
 				font: inherit;
@@ -108,7 +109,7 @@
 				box-shadow: 0px 2px 2px -1px #0003;
 				overflow: auto;
 			}
-			main > * {
+			fieldset {
 				width: 100%;
 				max-width: 650pt;
 				margin: 0 auto;
@@ -148,6 +149,10 @@
 				filter: greyscale(0.5);
 				-webkit-filter: greyscale(0.5);
 			}
+			button.active {
+				background: #048;
+				color: #FFF;
+			}
 		</style>
 	</head>
 	<body>
@@ -185,6 +190,10 @@
 		</div>
 		<div id="cpu"></div>
 		<main>
+			<div id="tabs">
+				<button id="tab-params">parameters</button>
+				<button id="tab-ui">UI</button>
+			</div>
 			<fieldset id="params"></fieldset>
 		</main>
 		<script type="module">
@@ -343,10 +352,37 @@
 
 			let params = await effectNode.getParams();
 			params.forEach(makeSlider);
-			
+
+			let iframe;
+			function selectTab(webUi) {
+				if (iframe) {
+					// tell the effect that the webview is closed
+					effectNode.closeInterface();
+					iframe.remove();
+					iframe = null;
+				}
+
+				if (webUi) {
+					$('#tab-params').classList.remove("active");
+					$('#tab-ui').classList.add("active");
+					$('#params').style.display = 'none';
+					if (effectNode.openInterface) {
+						iframe = effectNode.openInterface();
+						$('main').append(iframe);
+					}
+				} else {
+					$('#tab-params').classList.add("active");
+					$('#tab-ui').classList.remove("active");
+					let group = $('#params').style.display = 'block';
+				}
+			}
 			if (effectNode.openInterface) {
-				let iframe = effectNode.openInterface();
-				$('main').append(iframe);
+				$('#tab-params').addEventListener('click', _ => selectTab(false));
+				$('#tab-ui').addEventListener('click', _ => selectTab(true));
+				selectTab(true);
+			} else {
+				$('#tabs').style.display = 'none';
+				selectTab(false);
 			}
 			
 			setInterval(async _ => {
