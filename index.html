@@ -12,7 +12,7 @@
 				display: grid;
 				grid-template-areas: "audio buttons cpu" "main main main";
 				grid-template-rows: min-content 1fr;
-				grid-template-columns: 1fr 8rem 2rem;
+				grid-template-columns: 2fr minmax(min-content, 1fr) 2rem;
 				
 				position: fixed;
 				margin: 0;
@@ -63,7 +63,7 @@
 				justify-content: stretch;
 				min-height: 2rem;
 			}
-			button {
+			button, select {
 				font: inherit;
 				border: 2px solid #CCC;
 				background: linear-gradient(#FFF, #DDD);
@@ -71,22 +71,26 @@
 				flex-grow: 1;
 				cursor: pointer;
 			}
-			button:focus {
+			select {
+				font-size: 0.8em;
+				white-space: normal;
+			}
+			button:focus, select:focus {
 				border-color: #AAA;
 			}
-			button:hover {
+			button:hover, select:hover {
 				filter: brightness(1.2);
 				-webkit-filter: brightness(1.2);
 			}
-			button:active {
+			button:active, select:active {
 				background: linear-gradient(#DDD, #FFF);
 				border-color: #888;
 			}
-			button:first-child {
+			button:first-child, select:first-child {
 				border-left-width: 2px;
 				border-radius: 0.5rem 0 0 0.5rem;
 			}
-			button:last-child {
+			button:last-child, select:last-child {
 				border-right-width: 2px;
 				border-radius: 0 0.5rem 0.5rem 0;
 			}
@@ -184,6 +188,7 @@
 		<img id="background" src="rainbow-texture.jpg">
 		<audio id="media" controls loop crossorigin></audio>
 		<div id="buttons">
+			<select id="select-plugin-id" title="select plugin"></select>
 			<button id="button-link" title="copy link with state">🔗</button>
 			<button id="button-stopengine" title="stop audio engine">🛑</button>
 			<button id="button-reset" title="reset / reload">❌</button>
@@ -257,6 +262,13 @@
 				setTimeout(_ => span.remove(), 1500);
 			}
 
+			$('#select-plugin-id').onchange = _ => {
+				let id = $('#select-plugin-id').value;
+				queryParams.set("plugin", id);
+				queryParams.delete('state');
+				// Reloads the whole page
+				location.href = '?' + queryParams;
+			};
 			$('#button-link').onclick = async e => {
 				navigator.clipboard.writeText(location.href);
 				await updateQueryState();
@@ -279,7 +291,27 @@
 				wasmUrl = tarGzPrefixUrl + encodeURIComponent(new URL(wasmUrl, location).href) + "/";
 			}
 			let module = new ClapModule(wasmUrl);
-			let effectNode = await module.createNode(audioContext, {
+			let pluginId = queryParams.get('plugin') || null;
+			module.plugins().then(plugins => {
+				let select = $('#select-plugin-id');
+				if (plugins.length <= 1) {
+					select.remove();
+					return
+				}
+				plugins.forEach(plugin => {
+					let option = document.createElement('option');
+					option.value = plugin.id;
+					option.textContent = plugin.name;
+					console.log(plugin);
+					
+					select.appendChild(option);
+					if (plugin.id == pluginId) {
+						option.selected = true;
+						select.value = pluginId;
+					}
+				});
+			});
+			let effectNode = await module.createNode(audioContext, pluginId, {
 				numberOfInputs: 1,
 				numberOfOutputs: 1,
 				outputChannelCount: [2]

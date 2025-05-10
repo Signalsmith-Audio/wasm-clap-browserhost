@@ -1,3 +1,5 @@
+import clapModule from "./clap-host/clap-module.mjs";
+
 let moduleAdded = Symbol();
 
 function addRemoteMethods(node) {
@@ -17,6 +19,14 @@ export default class ClapModule {
 		this.url = new URL(url, location.href).href;
 
 		this.#m_modulePromise = moduleOptions.module || WebAssembly.compileStreaming(fetch(this.url));
+	}
+	
+	async plugins(processorOptions) {
+		let module = await clapModule({
+			url: this.url,
+			module: await this.#m_modulePromise
+		});
+		return module.plugins;
 	}
 	
 	async createNode(audioContext, pluginId, nodeOptions) {
