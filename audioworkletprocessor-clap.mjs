@@ -323,7 +323,10 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		getParams() {
 			let plugin = this.clapPlugin;
 			let params = plugin.ext['clap.params'];
-			if (!params) throw Error("clap.params not supported");
+			if (!params) {
+				console.error("clap.params not supported");
+				return [];
+			}
 
 			let paramInfo = [];
 			for (let i = 0; i < params.count(); ++i) {
