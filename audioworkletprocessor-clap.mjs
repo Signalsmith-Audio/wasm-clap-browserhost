@@ -222,6 +222,12 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			ext_params_rescan: flags => {
 				this.port.postMessage(['params_rescan', flags]);
 			},
+			ext_params_clear(paramId, flags) {
+				console.error("clap_host_params.clear() requested but not implemented");
+			},
+			ext_params_request_flush() {
+				console.error("clap_host_params.request_flush() requested but not implemented");
+			},
 
 			ext_webview_is_open: () => this.webviewIsOpen,
 			// plugin sent to us
