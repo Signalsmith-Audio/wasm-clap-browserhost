@@ -11,9 +11,11 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
 	let request = e.request;
 	e.respondWith((async () => {
-		let cachedResponse = await caches.match(request);
-		if (cachedResponse) return cachedResponse;
 		if (request.method == 'GET' && request.url.startsWith(PROXY_BASE)) {
+			request = new Request(request.url.replace(/\?.*/, ''));
+			let cachedResponse = await caches.match(request);
+			if (cachedResponse) return cachedResponse;
+			
 			let suffix = request.url.substr(PROXY_BASE.length);
 			let suffixTrimmed = suffix.replace(/\/.*/, '');
 			// next path component is .tar.gz URL, percent-encoded
@@ -26,6 +28,8 @@ self.addEventListener("fetch", e => {
 			cachedResponse = await caches.match(request);
 			return cachedResponse || new Response(null, {status: 404});
 		} else {
+			let cachedResponse = await caches.match(request);
+			if (cachedResponse) return cachedResponse;
 			return fetch(request);
 		}
 	})());
