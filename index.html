@@ -203,7 +203,6 @@
 		</main>
 		<script type="module">
 			import ClapModule from "./audioworkletnode-clap.mjs";
-			// import "./audioworkletprocessor-clap.mjs";
 			
 			let queryParams = new URLSearchParams(window.location.search);
 			function updateQuery() {
@@ -296,7 +295,7 @@
 				let select = $('#select-plugin-id');
 				if (plugins.length <= 1) {
 					select.remove();
-					return
+					return;
 				}
 				plugins.forEach(plugin => {
 					let option = document.createElement('option');

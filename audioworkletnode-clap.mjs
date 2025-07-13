@@ -1,13 +1,12 @@
 import clapModule from "./clap-host/clap-module.mjs";
 
-let moduleAdded = Symbol();
-
 function addRemoteMethods(node) {
 }
 
 export default class ClapModule {
 	url;
 	#m_modulePromise;
+	#m_moduleAdded = Symbol();
 
 	constructor(moduleOptions) {
 		if (typeof moduleOptions === 'string') moduleOptions = {url: moduleOptions};
@@ -45,10 +44,10 @@ export default class ClapModule {
 			pluginId: pluginId
 		};
 
-		if (!audioContext[moduleAdded]) {
+		if (!audioContext[this.#m_moduleAdded]) {
 			await audioContext.audioWorklet.addModule('./audioworkletprocessor-clap.mjs');
 		}
-		audioContext[moduleAdded] = true;
+		audioContext[this.#m_moduleAdded] = true;
 
 		let effectNode = new AudioWorkletNode(audioContext, 'audioworkletprocessor-clap', nodeOptions);
 		
@@ -66,8 +65,8 @@ export default class ClapModule {
 			};
 		}
 		
-		// Hacky event-handling
-		effectNode.events = {};
+		// Hacky event-handling: add a named function to this map
+		effectNode.events = Object.create(null);
 		
 		return new Promise(resolve => {
 			effectNode.port.onmessage = e => {
