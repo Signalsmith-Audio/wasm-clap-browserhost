@@ -285,7 +285,7 @@
 			};
 			
 			let tarGzPrefixUrl = await serviceWorkerReady;
-			let wasmUrl = queryParams.get('module') || 'plugin/freq-shifter.wclap.tar.gz';
+			let wasmUrl = queryParams.get('module') || 'plugin/basics-1_0_0.wclap.tar.gz';
 			if (/\.tar\.gz$/.test(wasmUrl)) {
 				wasmUrl = tarGzPrefixUrl + encodeURIComponent(new URL(wasmUrl, location).href) + "/";
 			}
