@@ -1,5 +1,40 @@
 import clapModule from "./clap-host/clap-module.mjs";
 
+// Unofficial pre-draft draft, but included here for compatibility
+clapModule.addExtension("clap.webview/1", {
+	wasm: {
+		ext_web_is_open: 'ip',
+		ext_web_send: 'ippi'
+	},
+	js: {
+		ext_web_is_open() {
+			// always open for now
+			return true;
+		},
+		// This is the name on the host struct, so it means the plugin has sent us a message
+		ext_web_send(voidPointer, length) {
+			return false;
+		}
+	},
+	addTypes(api, methods) {
+		api.clap_plugin_webview1compat = api.makeStruct(
+			{provide_starting_uri: api.makeFunc(api.pointer, api.pointer, api.u32)},
+			{receive: api.makeFunc(api.pointer, api.pointer, api.u32)}
+		);
+		api.clap_host_webview1compat = api.makeStruct(
+			{is_open: api.makeFunc(api.pointer)},
+			{send: api.makeFunc(api.pointer, api.pointer, api.u32)}
+		);
+		return api.save(api.clap_host_webview1compat, {
+			is_open: methods.ext_web_is_open,
+			send: methods.ext_webview_send
+		});
+	},
+	readPlugin(api, pointer, pluginPtr) {
+		return api.clap_plugin_webview1compat(pointer, pluginPtr);
+	}
+});
+
 class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	inputChannelCounts = [];
 	outputChannelCounts = [];
@@ -32,6 +67,11 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 				if (length > 0 || length < 2048) {
 					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
 				}
+			} else if (webviewExt = this.clapPlugin.ext['clap.webview/1']) {
+				let buffer = this.clapPlugin.api.tempBytes(2048);
+				if (webviewExt.provide_starting_uri(buffer, 2048)) {
+					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
+				}
 			}
 
 			// initial message lists plugin descriptor and remote methods
@@ -49,7 +89,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			
 			let data = event.data;
 			if (data instanceof ArrayBuffer) {
-				let webviewExt = this.clapPlugin.ext['clap.webview/2'];
+				let webviewExt = this.clapPlugin.ext['clap.webview/2'] || this.clapPlugin.ext['clap.webview/1'];
 				if (webviewExt) {
 					let buffer = this.clapPlugin.api.tempTyped(Uint8Array, data.byteLength);
 					buffer.set(new Uint8Array(data));
