@@ -81,14 +81,6 @@ addExtension("clap.params", {
 			request_flush: methods.ext_params_request_flush
 		});
 	},
-	// Write the host struct, returning the pointer for `get_extension()`
-	/*
-	writeHost(api, methods) {
-		return api.save(api.clap_host_log, {
-			log: methods.ext_log_log // WASM function pointer which proxies to the JS version
-		})
-	},
-	*/
 	// Read the plugin struct (if the plugin supports it) - the result goes in ext['clap.log']
 	readPlugin(api, pointer, pluginPtr) {
 		return api.clap_plugin_params(pointer, pluginPtr);

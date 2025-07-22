@@ -1,94 +1,5 @@
 import clapModule from "./clap-host/clap-module.mjs";
 
-clapModule.addExtension("clap.web/1", {
-	wasm: {
-		ext_web_is_open: 'ip',
-		ext_web_send: 'ippi'
-	},
-	js: {
-		ext_web_is_open() {
-			// never open for now
-			return false;
-		},
-		// This is the name on the host struct, so it means the plugin has sent us a message
-		ext_web_send(voidPointer, length) {
-			return false;
-		}
-	},
-	addTypes(api, methods) {
-		api.clap_plugin_web = api.makeStruct(
-			{get_start: api.makeFunc(api.pointer, api.pointer, api.u32)},
-			{receive: api.makeFunc(api.pointer, api.pointer, api.u32)}
-		);
-		api.clap_host_web = api.makeStruct(
-			{is_open: api.makeFunc(api.pointer)},
-			{send: api.makeFunc(api.pointer, api.pointer, api.u32)}
-		);
-		return api.save(api.clap_host_web, {
-			is_open: methods.ext_web_is_open,
-			send: methods.ext_web_send
-		});
-	},
-	readPlugin(api, pointer, pluginPtr) {
-		let web = api.clap_plugin_web(pointer, pluginPtr);
-		let buffer = api.tempBytes(1024);
-		if (!web.get_start(buffer, 1024)) return null;
-		return {
-			startPage: api.fromArg(api.string, buffer),
-			send: message => {
-				let messageArr = new Uint8Array(message);
-				let buffer = this.api.tempTyped(Uint8Array, messageArr.length);
-				buffer.set(messageArr);
-				web.receive(buffer, buffer.length)
-			}
-		};
-	}
-});
-clapModule.addExtension("clap.webview/1", {
-	wasm: {
-		ext_webview_is_open: 'ip',
-		ext_webview_send: 'ippi'
-	},
-	js: {
-		ext_webview_is_open() {
-			// never open for now
-			return false;
-		},
-		// This is the name on the host struct, so it means the plugin has sent us a message
-		ext_webview_send(voidPointer, length) {
-			return false;
-		}
-	},
-	addTypes(api, methods) {
-		api.clap_plugin_webview = api.makeStruct(
-			{provide_starting_uri: api.makeFunc(api.pointer, api.pointer, api.u32)},
-			{receive: api.makeFunc(api.pointer, api.pointer, api.u32)}
-		);
-		api.clap_host_webview = api.makeStruct(
-			{is_open: api.makeFunc(api.pointer)},
-			{send: api.makeFunc(api.pointer, api.pointer, api.u32)}
-		);
-		return api.save(api.clap_host_webview, {
-			is_open: methods.ext_webview_is_open,
-			send: methods.ext_webview_send
-		});
-	},
-	readPlugin(api, pointer, pluginPtr) {
-		let webview = api.clap_plugin_webview(pointer, pluginPtr);
-		let buffer = api.tempBytes(1024);
-		if (!webview.provide_starting_uri(buffer, 1024)) return null;
-		return {
-			startPage: api.fromArg(api.string, buffer),
-			send: message => {
-				let messageArr = new Uint8Array(message);
-				let buffer = this.api.tempTyped(Uint8Array, messageArr.length);
-				buffer.set(messageArr);
-				webview.receive(buffer, buffer.length)
-			}
-		};
-	}
-});
-
 class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	inputChannelCounts = [];
 	outputChannelCounts = [];
@@ -113,12 +24,21 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			this.clapUpdateAudioPorts();
 			this.clapActivate();
 			
+			let webviewStartPage = null;
+			let webviewExt = this.clapPlugin.ext['clap.webview/2'];
+			if (webviewExt) {
+				let buffer = this.clapPlugin.api.tempBytes(2048);
+				let length = webviewExt.get_uri(buffer, 2048);
+				if (length > 0 || length < 2048) {
+					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
+				}
+			}
+
 			// initial message lists plugin descriptor and remote methods
-			let webview = this.clapPlugin.ext['clap.webview/1'] || this.clapPlugin.ext['clap.web/1'];
 			this.port.postMessage({
 				desc: clapPlugin.api.clap_plugin_descriptor(clapPlugin.plugin.desc),
 				methods: Object.keys(this.remoteMethods),
-				webview: webview && {startPage: webview.startPage},
+				webview: webviewStartPage,
 				audioPorts: {'in': this.audioPortsIn, 'out': this.audioPortsOut}
 			});
 		});
@@ -129,10 +49,12 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			
 			let data = event.data;
 			if (data instanceof ArrayBuffer) {
-
-			
-				let webview = this.clapPlugin.ext['clap.webview/1'] || this.clapPlugin.ext['clap.web/1'];
-				if (webview) webview.send(data);
+				let webviewExt = this.clapPlugin.ext['clap.webview/2'];
+				if (webviewExt) {
+					let buffer = this.clapPlugin.api.tempTyped(Uint8Array, data.byteLength);
+					buffer.set(new Uint8Array(data));
+					webviewExt.receive(buffer, buffer.length);
+				}
 				return;
 			}
 			let [requestId, method, args] = data;

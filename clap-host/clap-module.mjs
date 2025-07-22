@@ -6,6 +6,7 @@ import "./ext/log.mjs";
 import "./ext/state.mjs";
 import "./ext/params.mjs";
 import "./ext/audio-ports.mjs";
+import "./ext/webview.mjs";
 
 async function clapHostBinding(moduleInstance, api, factory) {
 	let hostModule = await HostedPlugin.methodProxyModule();

@@ -116,7 +116,7 @@ export default class ClapModule {
 						window.addEventListener('visibilitychange', visibilityHandler = () => {
 							effectNode.webviewOpen(true, !document.hidden);
 						});
-						iframe.src = new URL(webview.startPage, this.url);
+						iframe.src = new URL(webview, this.url);
 						effectNode.webviewOpen(true, !document.hidden);
 						return iframe;
 					};
