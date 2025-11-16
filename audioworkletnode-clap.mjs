@@ -65,7 +65,10 @@ export default class ClapModule {
 			};
 		}
 
-		effectNode.getFile = async path => (await this.#m_modulePromise).files[path];
+		effectNode.getFile = async path => {
+			let files = (await this.#m_modulePromise).files;
+			return files[path.replace(/[?#].*/, '')];
+		};
 
 		// Hacky event-handling: add a named function to this map
 		effectNode.events = Object.create(null);
