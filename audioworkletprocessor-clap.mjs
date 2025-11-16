@@ -34,6 +34,31 @@ clapModule.addExtension("clap.webview/1", {
 		return api.clap_plugin_webview1compat(pointer, pluginPtr);
 	}
 });
+clapModule.addExtension("clap.webview/2", {
+	wasm: {
+		ext_webview_send: 'ippi'
+	},
+	js: {
+		ext_webview_send(voidPointer, length) {
+			return false;
+		}
+	},
+	addTypes(api, methods) {
+		api.clap_plugin_webview2compat = api.makeStruct(
+			{get_uri: api.makeFunc(api.pointer, api.pointer, api.u32)},
+			{receive: api.makeFunc(api.pointer, api.pointer, api.u32)}
+		);
+		api.clap_host_webview2compat = api.makeStruct(
+			{send: api.makeFunc(api.pointer, api.pointer, api.u32)}
+		);
+		return api.save(api.clap_host_webview2compat, {
+			send: methods.ext_webview_send
+		});
+	},
+	readPlugin(api, pointer, pluginPtr) {
+		return api.clap_plugin_webview2compat(pointer, pluginPtr);
+	}
+});
 
 class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	inputChannelCounts = [];
@@ -60,17 +85,33 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			this.clapActivate();
 			
 			let webviewStartPage = null;
-			let webviewExt = this.clapPlugin.ext['clap.webview/2'];
+			let webviewExt = this.clapPlugin.ext['clap.webview/3'];
 			if (webviewExt) {
 				let buffer = this.clapPlugin.api.tempBytes(2048);
 				let length = webviewExt.get_uri(buffer, 2048);
 				if (length > 0 || length < 2048) {
 					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
 				}
+			} else if (webviewExt = this.clapPlugin.ext['clap.webview/2']) {
+				let buffer = this.clapPlugin.api.tempBytes(2048);
+				let length = webviewExt.get_uri(buffer, 2048);
+				if (length > 0 || length < 2048) {
+					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
+					// Relative paths converted into `file://` URIs
+					if (!/^[a-z0-9_-]+\:/.test(webviewStartPage)) {
+						if (webviewStartPage[0] != '/') webviewStartPage = "/" + webviewStartPage;
+						webviewStartPage = "file://" + module.vfsPath + webviewStartPage;
+					}
+				}
 			} else if (webviewExt = this.clapPlugin.ext['clap.webview/1']) {
 				let buffer = this.clapPlugin.api.tempBytes(2048);
 				if (webviewExt.provide_starting_uri(buffer, 2048)) {
 					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
+					// Relative paths converted into `file://` URIs
+					if (!/^[a-z0-9_-]+\:/.test(webviewStartPage)) {
+						if (webviewStartPage[0] != '/') webviewStartPage = "/" + webviewStartPage;
+						webviewStartPage = "file://" + module.vfsPath + webviewStartPage;
+					}
 				}
 			}
 

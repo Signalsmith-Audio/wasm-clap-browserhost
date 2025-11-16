@@ -160,31 +160,8 @@
 		</style>
 	</head>
 	<body>
-		<script>
-			let serviceWorkerReady = (async serviceWorker => {
-				if (!serviceWorker.controller) {
-					// either there's no controller (no registations), or it's a hard-refresh (existing registrations will be bypassed, so remove them)
-					const registrations = await serviceWorker.getRegistrations();
-					await Promise.all(registrations.map(r => r.unregister()));
-
-					// Also delete the associated cache
-					caches.delete("wclap");
-
-					await serviceWorker.register("./wclap-service-worker.js", {updateViaCache: 'all'});
-				}
-				// Poll until it's ready (takes a bit longer on hard refresh)
-				return new Promise(pass => {
-					let ms = 10;
-					function check() {
-						if (serviceWorker.controller) return pass(serviceWorker.controller.scriptURL + "/");
-						console.log("waiting for serviceWorker");
-						if (ms > 100) return location.reload(); // If there's another tab open still holding onto the previous registration, we'd wait forever, so just refresh again
-						setTimeout(check, ms += 10);
-					}
-					check();
-				});
-			})(navigator.serviceWorker);
-		</script>
+		<script src="page-proxy-service-worker.js"></script>
+		
 		<img id="background" src="rainbow-texture.jpg">
 		<audio id="media" controls loop crossorigin></audio>
 		<div id="buttons">
@@ -284,11 +261,8 @@
 				location.href = '?' + queryParams;
 			};
 			
-			let tarGzPrefixUrl = await serviceWorkerReady;
+			let pageProxy = await pageProxyReady;
 			let wasmUrl = queryParams.get('module') || 'plugin/basics-1_0_0.wclap.tar.gz';
-			if (/\.tar\.gz$/.test(wasmUrl)) {
-				wasmUrl = tarGzPrefixUrl + encodeURIComponent(new URL(wasmUrl, location).href) + "/";
-			}
 			let module = new ClapModule(wasmUrl);
 			let pluginId = queryParams.get('plugin') || null;
 			module.plugins().then(plugins => {
@@ -310,6 +284,7 @@
 					}
 				});
 			});
+			let instanceId = crypto.randomUUID();
 			let effectNode = await module.createNode(audioContext, pluginId, {
 				numberOfInputs: 1,
 				numberOfOutputs: 1,
@@ -398,7 +373,17 @@
 					$('#tab-ui').classList.add("active");
 					$('#params').style.display = 'none';
 					if (effectNode.openInterface) {
-						iframe = effectNode.openInterface();
+						let frameId = "iframe-" + crypto.randomUUID();
+						iframe = effectNode.openInterface({
+							filePrefix: pageProxy.prefix + frameId + "/file",
+							resourcePrefix: pageProxy.prefix + frameId + "/get_resource"
+						});
+						iframe.id = frameId;
+						iframe[pageProxy.symbol] = async path => {
+							if (/^\/file\//.test(path)) {
+								return module.getFile(path.substr(5));
+							}
+						};
 						$('main').append(iframe);
 					}
 				} else {

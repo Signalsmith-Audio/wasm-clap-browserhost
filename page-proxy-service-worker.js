@@ -1,73 +1,159 @@
-const CACHE_KEY = "wclap";
-const PROXY_BASE = self.location.href + "/";
+/* This is a Service Worker which allows web pages to provide their own resources, under a scoped path prefix.
 
-self.addEventListener("install", e => {
-	self.skipWaiting(); // don't wait for all existing pages to close
-})
-self.addEventListener("activate", e => {
-	e.waitUntil(clients.claim());
-});
-
-self.addEventListener("fetch", e => {
-	let request = e.request;
-	e.respondWith((async () => {
-		if (request.method == 'GET' && request.url.startsWith(PROXY_BASE)) {
-			request = new Request(request.url.replace(/\?.*/, ''));
-			let cachedResponse = await caches.match(request);
-			if (cachedResponse) return cachedResponse;
-			
-			let suffix = request.url.substr(PROXY_BASE.length);
-			let suffixTrimmed = suffix.replace(/\/.*/, '');
-			// next path component is .tar.gz URL, percent-encoded
-			let bundleUrl = decodeURIComponent(suffixTrimmed);
-			
-			let tarResponse = await fetch(altRequest(bundleUrl));
-			await addCacheFromTarGz(tarResponse, PROXY_BASE + suffixTrimmed + "/");
-
-			// Check the cache again
-			cachedResponse = await caches.match(request);
-			return cachedResponse || new Response(null, {status: 404});
-		} else {
-			let cachedResponse = await caches.match(request);
-			if (cachedResponse) return cachedResponse;
-			return fetch(request);
-		}
-	})());
-
-	function altRequest(url) {
-		return new Request(url); // TODO: same credentials/etc
+When included with <script> it registers itself as a service worker, and defines the global `pageProxyReady` Promise.
+This resolves to the "page proxy" object:
+	{
+		prefix: "https://some/url/prefix/",
+		getResource: (path => [Blob/null])
 	}
+The `getResource()` function can be replaced, but the default uses t
+Therefore, if you want to fill an `<iframe>` with custom content without worrying about lifecycle stuff, give it an ID and place that after the proxy prefix, like:
+	<iframe id="my-iframe" src="{pageProxy.prefix}/my-iframe/...">
+Then assign a lookup function:
+	iframe[proxy.symbol] = (path => ...)
+*/
+if (typeof ServiceWorkerGlobalScope !== "function") {
+	// Included via <script> - register itself as a service worker
+	this.pageProxyReady = (async serviceWorker => {
+		let scriptUrl = document.currentScript?.src;
+		if (!serviceWorker.controller) {
+			// either there's no controller (no registrations), or it's a hard-refresh (existing registrations will be bypassed, so remove them)
+			const registrations = await serviceWorker.getRegistrations();
+			await Promise.all(registrations.map(r => r.unregister()));
 
-	async function addCacheFromTarGz(tarResponse, baseUrl) {
-		let stream = new DecompressionStream('gzip');
-		stream = tarResponse.body.pipeThrough(stream);
-		let arrayBuffer = await (new Response(stream)).arrayBuffer();
-		
-		let cache = await caches.open(CACHE_KEY);
-
-		let tarFileStream = new UntarFileStream(arrayBuffer);
-		let promises = [];
-		while (tarFileStream.hasNext()) {
-			let file = tarFileStream.next();
-			if (file.type == '0' || file.type == "\0" || file.type == "") {
-				let fileUrl = new URL(file.name, baseUrl).href;
-				let fileRequest = altRequest(fileUrl);
-				let fileExt = fileUrl.replace(/.*\./, '').toLowerCase();
-				let fileResponse = new Response(file.buffer, {
-					status: tarResponse.status,
-					statusText: tarResponse.statusText,
-					headers: {
-						'Content-Type': ext2Mime[fileExt] || 'application/octet-stream'
-					}
-				});
-				promises.push(cache.put(fileRequest, fileResponse));
+			await serviceWorker.register(scriptUrl || "./page-proxy-service-worker.js", {updateViaCache: 'all'});
+		}
+		let proxy = {
+			symbol: Symbol("page-proxy"),
+			prefix: "",
+			// This can be replaced with your own implementation
+			getResource(path) {
+				// Default: use the first path component as an element ID, and look for `proxy.symbol` to resolve it
+				let id = path.substr(1).replace(/[/?#].*/, '');
+				let element = document.getElementById(id);
+				if (!element || !element[proxy.symbol]) return null;
+				
+				path = path.substr(id.length + 1);
+				return element[proxy.symbol](path);
 			}
-		}
-		return Promise.all(promises);
-	}
-});
+		};
+		// Poll until it's ready (takes a bit longer on hard refresh)
+		return new Promise(pass => {
+			serviceWorker.addEventListener("message", async e => {
+				if (e.data.request) {
+					let resource = await proxy.getResource(e.data.path);
+					if (!(resource instanceof Blob)) {
+						let ext = e.data.path.replace(/[?#].*/, '').replace(/^.*\//, '').replace(/.*\./, '').toLowerCase();
+						resource = new Blob([resource], {type: ext2Mime[ext]});
+					}
+					serviceWorker.controller.postMessage({
+						request: e.data.request,
+						resource: resource
+					});
+				} else if (e.data['page-proxy-prefix']) {
+					proxy.prefix = e.data['page-proxy-prefix'];
+					return pass(proxy);
+				}
+			});
+			serviceWorker.addEventListener("controllerchange", e => {
+				// Re-register if the service worker changes - this ideally shouldn't happen, but this is the best we can do
+				return serviceWorker.controller.postMessage("page-proxy");
+			});
+			
+			let ms = 10;
+			function check() {
+				if (serviceWorker.controller) {
+					return serviceWorker.controller.postMessage("page-proxy");
+				}
+				console.log("waiting for serviceWorker");
+				if (ms > 100) return location.reload(); // If there's another tab open still holding onto the previous registration, we'd wait forever, so just refresh again
+				setTimeout(check, ms += 10);
+			}
+			check();
+		});
+	})(navigator.serviceWorker);
+} else {
+	// The actual Service Worker
 
-// data from https://github.com/jshttp/mime-db
+	self.addEventListener("install", e => {
+		self.skipWaiting(); // don't wait for all existing pages to close
+	})
+	self.addEventListener("activate", e => {
+		//e.waitUntil(clients.claim()); // claim existing pages
+	});
+
+	const PROXY_BASE = self.location.href + "/";
+	let requestMap = Object.create(null);
+	self.addEventListener("message", e => {
+		if (e.data == "page-proxy") {
+			e.source.postMessage({"page-proxy-prefix": PROXY_BASE + e.source.id + "/"});
+		} else if (e.data.request) {
+			requestMap[e.data.request]?.(e.data.resource);
+			delete requestMap[e.data.request];
+		} else {
+			console.error("unknown Service Worker message:", e.data);
+		}
+	});
+
+	self.addEventListener("fetch", e => {
+		let request = e.request;
+		e.respondWith((async () => {
+			if (request.method == 'GET' && request.url.startsWith(PROXY_BASE)) {
+				let url = request.url.substr(PROXY_BASE.length);
+				let clientId = url.replace(/\/.*/, '');
+				let path = url.substr(clientId.length);
+				
+				let client = await self.clients.get(clientId);
+				if (!client) return new Response(null, {status: 500});
+				let requestId = crypto.randomUUID();
+				return new Promise(pass => {
+					requestMap[requestId] = blobOrNull => {
+						if (blobOrNull) {
+							if (0) false;
+							return pass(new Response(blobOrNull));
+						}
+						pass(new Response(null, {status: 404}));
+					};
+					client.postMessage({
+						request: requestId,
+						path: path
+					});
+				});
+			} else {
+				let cachedResponse = await caches.match(request);
+				if (cachedResponse) return cachedResponse;
+				return fetch(request);
+			}
+		})());
+	});
+}
+
+// A more densely-packed version of https://github.com/jshttp/mime-db @license MIT
+/*
+(The MIT License)
+
+Copyright (c) 2014 Jonathan Ong <me@jongleberry.com>
+Copyright (c) 2015-2022 Douglas Christopher Wilson <doug@somethingdoug.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 let ext2Mime = {};
 /* let packed = [];
 for (let key in mimeDb) {
@@ -81,29 +167,3 @@ packed = packed.map(p => p.join(',')).join('|');
 	p = p.split(',');
 	p.slice(1).forEach(ext => ext2Mime[ext] = p[0]);
 });
-
-// Taken from js-untar: https://github.com/InvokIT/js-untar/blob/master/src/untar-worker.js @license MIT
-/*
-The MIT License (MIT)
-
-Copyright (c) 2015 Sebastian Jørgensen
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
- */
-function UntarWorker(){}var worker;function decodeUTF8(e){if("function"==typeof TextDecoder)return(new TextDecoder).decode(e);for(var r="",t=0;t<e.length;){var n=e[t++];if(127<n){if(191<n&&n<224){if(e.length<=t)throw"UTF-8 decode: incomplete 2-byte sequence";n=(31&n)<<6|63&e[t]}else if(223<n&&n<240){if(e.length<=t+1)throw"UTF-8 decode: incomplete 3-byte sequence";n=(15&n)<<12|(63&e[t])<<6|63&e[++t]}else{if(!(239<n&&n<248))throw"UTF-8 decode: unknown multibyte start 0x"+n.toString(16)+" at index "+(t-1);if(e.length<=t+2)throw"UTF-8 decode: incomplete 4-byte sequence";n=(7&n)<<18|(63&e[t])<<12|(63&e[++t])<<6|63&e[++t]}++t}if(n<=65535)r+=String.fromCharCode(n);else{if(!(n<=1114111))throw"UTF-8 decode: code point 0x"+n.toString(16)+" exceeds UTF-16 reach";n-=65536,r=(r+=String.fromCharCode(n>>10|55296))+String.fromCharCode(1023&n|56320)}}return r}function PaxHeader(e){this._fields=e}function TarFile(){}function UntarStream(e){this._bufferView=new DataView(e),this._position=0}function UntarFileStream(e){this._stream=new UntarStream(e),this._globalPaxHeader=null}UntarWorker.prototype={onmessage:function(e){try{if("extract"!==e.data.type)throw new Error("Unknown message type: "+e.data.type);this.untarBuffer(e.data.buffer)}catch(e){this.postError(e)}},postError:function(e){this.postMessage({type:"error",data:{message:e.message}})},postLog:function(e,r){this.postMessage({type:"log",data:{level:e,msg:r}})},untarBuffer:function(e){try{for(var r=new UntarFileStream(e);r.hasNext();){var t=r.next();this.postMessage({type:"extract",data:t},[t.buffer])}this.postMessage({type:"complete"})}catch(e){this.postError(e)}},postMessage:function(e,r){self.postMessage(e,r)}},"undefined"!=typeof self&&(worker=new UntarWorker,self.onmessage=function(e){worker.onmessage(e)}),PaxHeader.parse=function(e){for(var r=new Uint8Array(e),t=[];0<r.length;){var n=parseInt(decodeUTF8(r.subarray(0,r.indexOf(32)))),a=decodeUTF8(r.subarray(0,n)).match(/^\d+ ([^=]+)=((.|\r|\n)*)\n$/);if(null===a)throw new Error("Invalid PAX header data format.");var i=a[1],a=a[2],i=(0===a.length?a=null:null!==a.match(/^\d+$/)&&(a=parseInt(a)),{name:i,value:a});t.push(i),r=r.subarray(n)}return new PaxHeader(t)},PaxHeader.prototype={applyHeader:function(t){this._fields.forEach(function(e){var r=e.name,e=e.value;"path"===r?(r="name",void 0!==t.prefix&&delete t.prefix):"linkpath"===r&&(r="linkname"),null===e?delete t[r]:t[r]=e})}},UntarStream.prototype={readString:function(e){for(var r=+e,t=[],n=0;n<e;++n){var a=this._bufferView.getUint8(this.position()+ +n,!0);if(0===a)break;t.push(a)}return this.seek(r),String.fromCharCode.apply(null,t)},readBuffer:function(e){var r,t,n;return"function"==typeof ArrayBuffer.prototype.slice?r=this._bufferView.buffer.slice(this.position(),this.position()+e):(r=new ArrayBuffer(e),t=new Uint8Array(r),n=new Uint8Array(this._bufferView.buffer,this.position(),e),t.set(n)),this.seek(e),r},seek:function(e){this._position+=e},peekUint32:function(){return this._bufferView.getUint32(this.position(),!0)},position:function(e){if(void 0===e)return this._position;this._position=e},size:function(){return this._bufferView.byteLength}},UntarFileStream.prototype={hasNext:function(){return this._stream.position()+4<this._stream.size()&&0!==this._stream.peekUint32()},next:function(){return this._readNextFile()},_readNextFile:function(){var e=this._stream,r=new TarFile,t=!1,n=null,a=e.position()+512;switch(r.name=e.readString(100),r.mode=e.readString(8),r.uid=parseInt(e.readString(8)),r.gid=parseInt(e.readString(8)),r.size=parseInt(e.readString(12),8),r.mtime=parseInt(e.readString(12),8),r.checksum=parseInt(e.readString(8)),r.type=e.readString(1),r.linkname=e.readString(100),r.ustarFormat=e.readString(6),-1<r.ustarFormat.indexOf("ustar")&&(r.version=e.readString(2),r.uname=e.readString(32),r.gname=e.readString(32),r.devmajor=parseInt(e.readString(8)),r.devminor=parseInt(e.readString(8)),r.namePrefix=e.readString(155),0<r.namePrefix.length)&&(r.name=r.namePrefix+"/"+r.name),e.position(a),r.type){case"0":case"":r.buffer=e.readBuffer(r.size);break;case"1":case"2":case"3":case"4":case"5":case"6":case"7":break;case"g":t=!0,this._globalPaxHeader=PaxHeader.parse(e.readBuffer(r.size));break;case"x":t=!0,n=PaxHeader.parse(e.readBuffer(r.size))}void 0===r.buffer&&(r.buffer=new ArrayBuffer(0));a+=r.size;return r.size%512!=0&&(a+=512-r.size%512),e.position(a),t&&(r=this._readNextFile()),null!==this._globalPaxHeader&&this._globalPaxHeader.applyHeader(r),null!==n&&n.applyHeader(r),r}};

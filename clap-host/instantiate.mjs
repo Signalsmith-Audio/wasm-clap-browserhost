@@ -7,16 +7,14 @@ export default async function instantiate(options) {
 	let instance = options.instance;
 	if (!instance) {
 		let module = options.module;
-		if (!module) {
-			module = WebAssembly.compileStreaming(fetch(url));
-		}
+		if (!module) throw Error("missing `module` data");
 
 		let imports = options.imports || {};
 		if (!imports.wasi_snapshot_preview1) {
 			imports.wasi_snapshot_preview1 = wasi_snapshot_preview1();
 		}
 
-		instance = await WebAssembly.instantiate(await module, imports);
+		instance = await WebAssembly.instantiate(await module.module, imports);
 		// this seems to be the convention
 		imports.wasi_snapshot_preview1.instance = instance;
 		

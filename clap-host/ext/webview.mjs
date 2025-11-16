@@ -1,6 +1,6 @@
 import addExtension from "./add-extension.mjs"
 
-addExtension("clap.webview/2", {
+addExtension("clap.webview/3", {
 	wasm: {
 		ext_webview_send: 'ippi'
 	},
@@ -13,6 +13,7 @@ addExtension("clap.webview/2", {
 	addTypes(api, methods) {
 		api.clap_plugin_webview = api.makeStruct(
 			{get_uri: api.makeFunc(api.pointer, api.pointer, api.u32)},
+			{get_resource: api.makeFunc(api.pointer, api.pointer, api.pointer, api.u32, api.pointer)},
 			{receive: api.makeFunc(api.pointer, api.pointer, api.u32)}
 		);
 		api.clap_host_webview = api.makeStruct(

@@ -13,11 +13,14 @@ export default class ClapModule {
 		
 		let url = moduleOptions?.url;
 		// If we specify a directory (ends in `/`) then use `module.wasm`
-		if (/\.(wasm-clap|wclap)$/.test(url)) url += '/'; // Assume .wasm-clap is a bundle directory
 		if (/\/$/.test(url)) url += "module.wasm";
 		this.url = new URL(url, location.href).href;
 
-		this.#m_modulePromise = moduleOptions.module || WebAssembly.compileStreaming(fetch(this.url));
+		this.#m_modulePromise = Promise.resolve(moduleOptions.module || clapModule.fetchModule(this.url));
+	}
+	
+	async getFile(path) {
+		return (await this.#m_modulePromise).files[path];
 	}
 	
 	async plugins(processorOptions) {
@@ -38,9 +41,10 @@ export default class ClapModule {
 			numberOfOutputs: 1,
 			outputChannelCount: [2],
 		};
+		let moduleObj = await this.#m_modulePromise;
 		nodeOptions.processorOptions = {
 			url: this.url,
-			module: await this.#m_modulePromise,
+			module: moduleObj,
 			pluginId: pluginId
 		};
 
@@ -110,13 +114,19 @@ export default class ClapModule {
 						}
 					};
 					let visibilityHandler;
-					effectNode.openInterface = () => {
+					effectNode.openInterface = (uiOptions) => {
 						iframe = document.createElement('iframe');
 						window.addEventListener('message', messageHandler);
 						window.addEventListener('visibilitychange', visibilityHandler = () => {
 							effectNode.webviewOpen(true, !document.hidden);
 						});
-						iframe.src = new URL(webview, this.url);
+						let src = webview;
+						if (/^file:/.test(src) && uiOptions?.filePrefix) {
+							src = uiOptions.filePrefix + webview.replace(/^file:\/*/, '/');
+						} else if (src[0] == "/" && uiOptions?.resourcePrefix) {
+							src = uiOptions.resourcePrefix + webview;
+						}
+						iframe.src = new URL(src, this.url);
 						effectNode.webviewOpen(true, !document.hidden);
 						return iframe;
 					};

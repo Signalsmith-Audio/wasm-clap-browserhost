@@ -1,5 +1,6 @@
 import instantiate from "./instantiate.mjs";
 import clapInterface from"./clap-interface.mjs";
+import expandTarGz from"./targz.mjs";
 
 import HostedPlugin from "./hosted-plugin.mjs";
 import "./ext/log.mjs";
@@ -71,6 +72,8 @@ async function clapHostBinding(moduleInstance, api, factory) {
 
 async function clapModule(options) {
 	let url = options.url;
+	
+	if (!options.module) options.module = clapModule.fetchModule(url);
 	let instance = await instantiate(options);
 
 	if (!('clap_entry' in instance.exports)) throw Error('no clap_entry found');
@@ -81,7 +84,7 @@ async function clapModule(options) {
 
 	let entryPtr = instance.exports.clap_entry;
 	let entry = api.clap_plugin_entry(entryPtr);
-	if (!entry.init(url)) {
+	if (!entry.init(options.module.path)) {
 		throw Error("clap_entry.init() failed");
 	}
 	
@@ -100,6 +103,7 @@ async function clapModule(options) {
 	
 	return {
 		url: url,
+		vfsPath: options.module.path,
 		version: entry.clap_version,
 		plugins: plugins,
 		async create(pluginId) {
@@ -109,5 +113,40 @@ async function clapModule(options) {
 }
 
 clapModule.addExtension = HostedPlugin.addExtension.bind(HostedPlugin);
+clapModule.fetchModule = async url => {
+	// Deliberately cause problems if a host/plugin assumes a predictable path
+	let fnv1a32 = 0x811c9dc5;
+	for (let i = 0; i < url.length; ++i) {
+		let byte = url.charCodeAt(i);
+		fnv1a32 = ((fnv1a32^byte)*0x1000193)|0;
+	}
+	let hex = [24, 16, 8, 0].map(s => ((fnv1a32>>s)&0xFF).toString(16).padStart(2, "0")).join("");
+	let vfsPath = "/plugin/" + hex;
+
+	let response = await fetch(url);
+	if (response.headers.get("Content-Type") != "application/wasm") {
+		let files = await expandTarGz(response);
+		if (!files['module.wasm']) {
+			throw Error("WCLAP bundles must have a top-level `module.wasm`");
+		}
+		let newFiles = {};
+		for (let path in files) {
+			newFiles[vfsPath + "/" + path] = files[path];
+		}
+		newFiles[vfsPath + "/module.wasm"] = new ArrayBuffer(0);
+		return {
+			module: await WebAssembly.compile(files['module.wasm']),
+			path: vfsPath,
+			files: newFiles
+		};
+	}
+	return {
+		module: await WebAssembly.compileStreaming(response),
+		path: vfsPath,
+		files: {
+			[vfsPath + "/module.wasm"]: new ArrayBuffer(0)
+		}
+	};
+};
 
 export {clapModule as default};
