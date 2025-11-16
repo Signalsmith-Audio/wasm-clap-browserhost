@@ -180,234 +180,239 @@
 		</main>
 		<script type="module">
 			import ClapModule from "./audioworkletnode-clap.mjs";
-			
-			let queryParams = new URLSearchParams(window.location.search);
-			function updateQuery() {
-				history.replaceState(null, null, '?' + queryParams);
-			}
 
-			let $ = document.querySelector.bind(document);
-			let audioContext = new AudioContext();
-			
-			let audioElement = $('audio');
-			audioElement.src = queryParams.get('audio') || 'audio/loop.mp3';
-			let audioSource = audioContext.createMediaElementSource(audioElement);
-			
-			document.body.addEventListener('dragover', e => {
-				document.body.classList.add('file-drop');
-				e.preventDefault();
-				e.stopPropagation();
-			});
-			document.body.addEventListener('dragcancel', e => {
-				document.body.classList.remove('file-drop');
-			});
-			document.body.addEventListener('drop', e => {
-				document.body.classList.remove('file-drop');
-				let file = e.dataTransfer.items?.[0]?.getAsFile?.() || e.dataTransfer.files?.[0];
-				if (/^blob:/.test(audioElement.src)) {
-					URL.revokeObjectURL(audioElement.src);
+			async function startPage() {
+				let queryParams = new URLSearchParams(window.location.search);
+				function updateQuery() {
+					history.replaceState(null, null, '?' + queryParams);
 				}
-				audioElement.src = URL.createObjectURL(file);
-				audioElement.play();
-				e.preventDefault();
-				e.stopPropagation();
-			});
-			
-			['mousedown', 'focus'].forEach(name => {
-				window.addEventListener(name, e => {
-					if (queryParams.has('autostart')) audioContext.resume(name);
-				}, {capture: true});
-			});
-			if (!queryParams.has('autostart')) {
-				audioContext.suspend();
-			}
-			['play'].forEach(name => {
-				window.addEventListener(name, e => audioContext.resume(name), {capture: true});
-			});
-			
-			function blip(message, event) {
-				let span = document.createElement('span');
-				span.setAttribute('style', 'display:block;padding: 0.5rem;position:absolute;background:#FFF;color:#555;font-size:0.8rem;border-radius:0.3rem;box-shadow:0px 2px 4px #0008;z-index:10000');
-				span.textContent = message;
-				(event?.target || document.body).append(span);
-				span.onclick = e => {
-					span.remove();
-					e.preventDefault;
+
+				let $ = document.querySelector.bind(document);
+				let audioContext = new AudioContext();
+				
+				let audioElement = $('audio');
+				audioElement.src = queryParams.get('audio') || 'audio/loop.mp3';
+				let audioSource = audioContext.createMediaElementSource(audioElement);
+				
+				document.body.addEventListener('dragover', e => {
+					document.body.classList.add('file-drop');
+					e.preventDefault();
 					e.stopPropagation();
-				};
-				setTimeout(_ => span.remove(), 1500);
-			}
-
-			$('#select-plugin-id').onchange = _ => {
-				let id = $('#select-plugin-id').value;
-				queryParams.set("plugin", id);
-				queryParams.delete('state');
-				// Reloads the whole page
-				location.href = '?' + queryParams;
-			};
-			$('#button-link').onclick = async e => {
-				navigator.clipboard.writeText(location.href);
-				await updateQueryState();
-				await navigator.clipboard.writeText(location.href);
-				blip("copied", e);
-			};
-			$('#button-stopengine').onclick = _ => {
-				audioElement.pause();
-				audioContext.suspend();
-			};
-			$('#button-reset').onclick = _ => {
-				queryParams.delete('state');
-				// Reloads the whole page
-				location.href = '?' + queryParams;
-			};
-			
-			let pageProxy = await pageProxyReady;
-			let wasmUrl = queryParams.get('module') || 'plugin/basics-1_0_0.wclap.tar.gz';
-			let module = new ClapModule(wasmUrl);
-			let pluginId = queryParams.get('plugin') || null;
-			module.plugins().then(plugins => {
-				let select = $('#select-plugin-id');
-				if (plugins.length <= 1) {
-					select.remove();
-					return;
-				}
-				plugins.forEach(plugin => {
-					let option = document.createElement('option');
-					option.value = plugin.id;
-					option.textContent = plugin.name;
-					console.log(plugin);
-					
-					select.appendChild(option);
-					if (plugin.id == pluginId) {
-						option.selected = true;
-						select.value = pluginId;
-					}
 				});
-			});
-			let instanceId = crypto.randomUUID();
-			let effectNode = await module.createNode(audioContext, pluginId, {
-				numberOfInputs: 1,
-				numberOfOutputs: 1,
-				outputChannelCount: [2]
-			});
-			if (queryParams.get('state')) {
-				let binary = atob(queryParams.get('state').replace(/-/g, '+').replace(/_/g, '/'));
-				let array = new Uint8Array(binary.length);
-				array.forEach((c, i) => array[i] = binary.charCodeAt(i));
-				await effectNode.loadState(array.buffer);
-			}
-			audioSource.connect(effectNode);
-			effectNode.connect(audioContext.destination);
-			globalThis.effectNode = effectNode;
-			
-			let paramUpdateFns = [];
-			effectNode.events.params_rescan = flags => {
-				paramUpdateFns.forEach(fn => fn());
-			};
-			let updateQueryStateTimer = null;
-			async function updateQueryState() {
-				updateQueryStateTimer = null;
-				
-				let state = await effectNode.saveState();
-				state = new Uint8Array(ArrayBuffer.isView(state) ? state.buffer : state);
-				let binary = "";
-				state.forEach(c => binary += String.fromCharCode(c));
-				queryParams.set('state', btoa(binary).replace(/\+/g, '-').replace(/\//g, '_'));
-				updateQuery();
-			}
-			effectNode.events.state_mark_dirty = async () => {
-				if (updateQueryStateTimer) return;
-				updateQueryStateTimer = setTimeout(updateQueryState, 100);
-			};
-			
-			function makeSlider(param) {
-				let group = $('#params');
-				let label = document.createElement('label');
-				
-				let name = document.createElement('span');
-				name.classList.add('name');
-				name.append(param.name);
-
-				let input = document.createElement('input');
-				input.type = 'range';
-				input.min = param.min_value;
-				input.max = param.max_value;
-				input.step = param.flags.stepped ? 1 : 1e-6;
-				let writeValue = input.oninput = async e => {
-					param.value = await effectNode.setParam(param.id, parseFloat(input.value));
-					output.textContent = param.value.text;
-				};
-				let readValue = async e => {
-					param.value = await effectNode.getParam(param.id);
-					input.value = param.value.value;
-					output.textContent = param.value.text;
-				};
-				readValue();
-				paramUpdateFns.push(readValue);
-				input.ondblclick = e => {
-					input.value = param.default_value;
-					writeValue();
-				};
-				
-				let output = document.createElement('output');
-				output.textContent = param.value.text;
-
-				label.append(name, input, output);
-				group.append(label);
-			}
-
-			let params = await effectNode.getParams();
-			params.forEach(makeSlider);
-
-			let iframe;
-			function selectTab(webUi) {
-				if (iframe) {
-					// tell the effect that the webview is closed
-					effectNode.closeInterface();
-					iframe.remove();
-					iframe = null;
-				}
-
-				if (webUi) {
-					$('#tab-params').classList.remove("active");
-					$('#tab-ui').classList.add("active");
-					$('#params').style.display = 'none';
-					if (effectNode.openInterface) {
-						let frameId = "iframe-" + crypto.randomUUID();
-						iframe = effectNode.openInterface({
-							filePrefix: pageProxy.prefix + frameId + "/file",
-							resourcePrefix: pageProxy.prefix + frameId + "/get_resource"
-						});
-						iframe.id = frameId;
-						iframe[pageProxy.symbol] = async path => {
-							if (/^\/file\//.test(path)) {
-								return module.getFile(path.substr(5));
-							}
-						};
-						$('main').append(iframe);
+				document.body.addEventListener('dragcancel', e => {
+					document.body.classList.remove('file-drop');
+				});
+				document.body.addEventListener('drop', e => {
+					document.body.classList.remove('file-drop');
+					let file = e.dataTransfer.items?.[0]?.getAsFile?.() || e.dataTransfer.files?.[0];
+					if (/^blob:/.test(audioElement.src)) {
+						URL.revokeObjectURL(audioElement.src);
 					}
-				} else {
-					$('#tab-params').classList.add("active");
-					$('#tab-ui').classList.remove("active");
-					let group = $('#params').style.display = 'block';
+					audioElement.src = URL.createObjectURL(file);
+					audioElement.play();
+					e.preventDefault();
+					e.stopPropagation();
+				});
+				
+				['mousedown', 'focus'].forEach(name => {
+					window.addEventListener(name, e => {
+						if (queryParams.has('autostart')) audioContext.resume(name);
+					}, {capture: true});
+				});
+				if (!queryParams.has('autostart')) {
+					audioContext.suspend();
 				}
+				['play'].forEach(name => {
+					window.addEventListener(name, e => audioContext.resume(name), {capture: true});
+				});
+				
+				function blip(message, event) {
+					let span = document.createElement('span');
+					span.setAttribute('style', 'display:block;padding: 0.5rem;position:absolute;background:#FFF;color:#555;font-size:0.8rem;border-radius:0.3rem;box-shadow:0px 2px 4px #0008;z-index:10000');
+					span.textContent = message;
+					(event?.target || document.body).append(span);
+					span.onclick = e => {
+						span.remove();
+						e.preventDefault;
+						e.stopPropagation();
+					};
+					setTimeout(_ => span.remove(), 1500);
+				}
+
+				$('#select-plugin-id').onchange = _ => {
+					let id = $('#select-plugin-id').value;
+					queryParams.set("plugin", id);
+					queryParams.delete('state');
+					// Reloads the whole page
+					location.href = '?' + queryParams;
+				};
+				$('#button-link').onclick = async e => {
+					navigator.clipboard.writeText(location.href);
+					await updateQueryState();
+					await navigator.clipboard.writeText(location.href);
+					blip("copied", e);
+				};
+				$('#button-stopengine').onclick = _ => {
+					audioElement.pause();
+					audioContext.suspend();
+				};
+				$('#button-reset').onclick = _ => {
+					queryParams.delete('state');
+					// Reloads the whole page
+					location.href = '?' + queryParams;
+				};
+				
+				let wasmUrl = queryParams.get('module') || 'plugin/basics-1_0_0.wclap.tar.gz';
+				let module = new ClapModule(wasmUrl);
+				let pluginId = queryParams.get('plugin') || null;
+				module.plugins().then(plugins => {
+					let select = $('#select-plugin-id');
+					if (plugins.length <= 1) {
+						select.remove();
+						return;
+					}
+					plugins.forEach(plugin => {
+						let option = document.createElement('option');
+						option.value = plugin.id;
+						option.textContent = plugin.name;
+						console.log(plugin);
+						
+						select.appendChild(option);
+						if (plugin.id == pluginId) {
+							option.selected = true;
+							select.value = pluginId;
+						}
+					});
+				});
+				let instanceId = crypto.randomUUID();
+				let effectNode = await module.createNode(audioContext, pluginId, {
+					numberOfInputs: 1,
+					numberOfOutputs: 1,
+					outputChannelCount: [2]
+				});
+				if (queryParams.get('state')) {
+					let binary = atob(queryParams.get('state').replace(/-/g, '+').replace(/_/g, '/'));
+					let array = new Uint8Array(binary.length);
+					array.forEach((c, i) => array[i] = binary.charCodeAt(i));
+					await effectNode.loadState(array.buffer);
+				}
+				audioSource.connect(effectNode);
+				effectNode.connect(audioContext.destination);
+				globalThis.effectNode = effectNode;
+				
+				let paramUpdateFns = [];
+				effectNode.events.params_rescan = flags => {
+					paramUpdateFns.forEach(fn => fn());
+				};
+				let updateQueryStateTimer = null;
+				async function updateQueryState() {
+					updateQueryStateTimer = null;
+					
+					let state = await effectNode.saveState();
+					state = new Uint8Array(ArrayBuffer.isView(state) ? state.buffer : state);
+					let binary = "";
+					state.forEach(c => binary += String.fromCharCode(c));
+					queryParams.set('state', btoa(binary).replace(/\+/g, '-').replace(/\//g, '_'));
+					updateQuery();
+				}
+				effectNode.events.state_mark_dirty = async () => {
+					if (updateQueryStateTimer) return;
+					updateQueryStateTimer = setTimeout(updateQueryState, 100);
+				};
+				
+				function makeSlider(param) {
+					let group = $('#params');
+					let label = document.createElement('label');
+					
+					let name = document.createElement('span');
+					name.classList.add('name');
+					name.append(param.name);
+
+					let input = document.createElement('input');
+					input.type = 'range';
+					input.min = param.min_value;
+					input.max = param.max_value;
+					input.step = param.flags.stepped ? 1 : 1e-6;
+					let writeValue = input.oninput = async e => {
+						param.value = await effectNode.setParam(param.id, parseFloat(input.value));
+						output.textContent = param.value.text;
+					};
+					let readValue = async e => {
+						param.value = await effectNode.getParam(param.id);
+						input.value = param.value.value;
+						output.textContent = param.value.text;
+					};
+					readValue();
+					paramUpdateFns.push(readValue);
+					input.ondblclick = e => {
+						input.value = param.default_value;
+						writeValue();
+					};
+					
+					let output = document.createElement('output');
+					output.textContent = param.value.text;
+
+					label.append(name, input, output);
+					group.append(label);
+				}
+
+				let params = await effectNode.getParams();
+				params.forEach(makeSlider);
+
+				let iframe;
+				let pageProxy = await pageProxyReady;
+				function selectTab(webUi) {
+					if (iframe) {
+						// tell the effect that the webview is closed
+						effectNode.closeInterface();
+						iframe.remove();
+						iframe = null;
+					}
+
+					if (webUi) {
+						$('#tab-params').classList.remove("active");
+						$('#tab-ui').classList.add("active");
+						$('#params').style.display = 'none';
+						if (effectNode.openInterface) {
+							let frameId = "iframe-" + crypto.randomUUID();
+							iframe = effectNode.openInterface({
+								filePrefix: pageProxy.prefix + frameId + "/file",
+								resourcePrefix: pageProxy.prefix + frameId + "/get_resource"
+							});
+							iframe.id = frameId;
+							iframe[pageProxy.symbol] = async path => {
+								if (/^\/file\//.test(path)) {
+									return effectNode.getFile(path.substr(5));
+								} else if (/^\/get_resource\//.test(path)) {
+									return effectNode.getResource(path.substr(13));
+								}
+							};
+							$('main').append(iframe);
+						}
+					} else {
+						$('#tab-params').classList.add("active");
+						$('#tab-ui').classList.remove("active");
+						let group = $('#params').style.display = 'block';
+					}
+				}
+				if (effectNode.openInterface) {
+					$('#tab-params').addEventListener('click', _ => selectTab(false));
+					$('#tab-ui').addEventListener('click', _ => selectTab(true));
+					selectTab(true);
+				} else {
+					$('#tabs').style.display = 'none';
+					selectTab(false);
+				}
+				
+				setInterval(async _ => {
+					let ms = await effectNode.performance();
+					let blockMs = 128*1000/audioContext.sampleRate;
+					let ratioWasm = ms.wasm/blockMs;
+					let ratioJs = ms.js/blockMs - ratioWasm;
+					$('#cpu').textContent = `${(ratioWasm*100).toFixed(1)}%\n${(ratioJs*100).toFixed(1)}%`;
+				}, 1000);
 			}
-			if (effectNode.openInterface) {
-				$('#tab-params').addEventListener('click', _ => selectTab(false));
-				$('#tab-ui').addEventListener('click', _ => selectTab(true));
-				selectTab(true);
-			} else {
-				$('#tabs').style.display = 'none';
-				selectTab(false);
-			}
-			
-			setInterval(async _ => {
-				let ms = await effectNode.performance();
-				let blockMs = 128*1000/audioContext.sampleRate;
-				let ratioWasm = ms.wasm/blockMs;
-				let ratioJs = ms.js/blockMs - ratioWasm;
-				$('#cpu').textContent = `${(ratioWasm*100).toFixed(1)}%\n${(ratioJs*100).toFixed(1)}%`;
-			}, 1000);
+			startPage();
 		</script>
 	</body>
 </html>

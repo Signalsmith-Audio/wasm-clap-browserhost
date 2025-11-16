@@ -375,6 +375,22 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		},
 		performance() {
 			return {js: this.#averageJsMs, wasm: this.#averageWasmMs};
+		},
+		getResource(path) {
+			let plugin = this.clapPlugin;
+			let webviewExt = plugin.ext['clap.webview/3'];
+			if (!webviewExt) {
+				console.error("clap.webview/3 not supported for getResource()");
+				return null;
+			}
+			let mimeBytes = plugin.api.tempBytes(128);
+			this.streamOutput.clear();
+			if (!webviewExt.get_resource(path, mimeBytes, 128, plugin.hostPointers.ostream)) {
+				throw Error("webview.get_resource() returned false");
+			}
+			let mimeString = plugin.api.fromArg(plugin.api.string, mimeBytes);
+			let result = this.streamOutput.result.slice(); // TODO: transfer ownership, to avoid allocation/GC from this
+			return {bytes: result.buffer, type: mimeString};
 		}
 	};
 

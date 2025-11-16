@@ -42,7 +42,7 @@ if (typeof ServiceWorkerGlobalScope !== "function") {
 			serviceWorker.addEventListener("message", async e => {
 				if (e.data.request) {
 					let resource = await proxy.getResource(e.data.path);
-					if (!(resource instanceof Blob)) {
+					if (resource && !(resource instanceof Blob)) {
 						let ext = e.data.path.replace(/[?#].*/, '').replace(/^.*\//, '').replace(/.*\./, '').toLowerCase();
 						resource = new Blob([resource], {type: ext2Mime[ext]});
 					}
@@ -112,7 +112,7 @@ if (typeof ServiceWorkerGlobalScope !== "function") {
 							if (0) false;
 							return pass(new Response(blobOrNull));
 						}
-						pass(new Response(null, {status: 404}));
+						pass(new Response(new Blob(["404 Not Found\n" + url], {type: 'text/plain'}), {status: 404}));
 					};
 					client.postMessage({
 						request: requestId,

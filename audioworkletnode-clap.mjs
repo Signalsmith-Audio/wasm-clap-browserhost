@@ -18,11 +18,7 @@ export default class ClapModule {
 
 		this.#m_modulePromise = Promise.resolve(moduleOptions.module || clapModule.fetchModule(this.url));
 	}
-	
-	async getFile(path) {
-		return (await this.#m_modulePromise).files[path];
-	}
-	
+		
 	async plugins(processorOptions) {
 		let module = await clapModule({
 			url: this.url,
@@ -68,7 +64,9 @@ export default class ClapModule {
 				});
 			};
 		}
-		
+
+		effectNode.getFile = async path => (await this.#m_modulePromise).files[path];
+
 		// Hacky event-handling: add a named function to this map
 		effectNode.events = Object.create(null);
 		
@@ -77,6 +75,13 @@ export default class ClapModule {
 				let {desc, methods, webview} = e.data;
 				effectNode.descriptor = desc;
 				methods.forEach(addRemoteMethod);
+				
+				let prevGetResource = effectNode.getResource;
+				effectNode.getResource = async path => {
+					let obj = await prevGetResource(path);
+					// Can't construct Blob in the AudioWorklet, so we translate it here
+					return new Blob([obj.bytes], {type: obj.type});
+				};
 
 				let iframe = null;
 
