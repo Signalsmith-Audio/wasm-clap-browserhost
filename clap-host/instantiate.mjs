@@ -10,8 +10,15 @@ export default async function instantiate(options) {
 		if (!module) throw Error("missing `module` data");
 
 		let imports = options.imports || {};
+		WebAssembly.Module.imports(module.module).forEach(entry => {
+			if (entry.kind == 'memory') {
+				if (!imports[entry.module]) imports[entry.module] = Object.create(null);
+				let memory = new WebAssembly.Memory({initial: 8, maximum: 32768, shared: true});
+				imports[entry.module][entry.name] = memory;
+			}
+		});
 		if (!imports.wasi_snapshot_preview1) {
-			imports.wasi_snapshot_preview1 = wasi_snapshot_preview1();
+			imports.wasi_snapshot_preview1 = wasi_snapshot_preview1([], {}, null, imports.env.memory);
 		}
 
 		instance = await WebAssembly.instantiate(await module.module, imports);
@@ -21,6 +28,7 @@ export default async function instantiate(options) {
 		// WASI entry points for standalone / dynamic
 		instance.exports._start?.();
 		instance.exports._initialize?.();
+
+		return {instance, imports};
 	}
-	return instance;
 }

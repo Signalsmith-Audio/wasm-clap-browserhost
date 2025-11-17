@@ -74,13 +74,15 @@ async function clapModule(options) {
 	let url = options.url;
 	
 	if (!options.module) options.module = clapModule.fetchModule(url);
-	let instance = await instantiate(options);
+	let instanceObj = await instantiate(options);
+	let instance = instanceObj.instance;
+	let memory = instance.exports.memory || instanceObj.imports.env.memory;
 
 	if (!('clap_entry' in instance.exports)) throw Error('no clap_entry found');
 	if (typeof instance.exports.malloc !=='function') throw Error('no malloc() found');
 	
 	let hostMemorySize = options.hostMemorySize || 1024*1024;
-	let api = clapInterface(instance, hostMemorySize, options.log);
+	let api = clapInterface(instance, memory, hostMemorySize, options.log);
 
 	let entryPtr = instance.exports.clap_entry;
 	let entry = api.clap_plugin_entry(entryPtr);

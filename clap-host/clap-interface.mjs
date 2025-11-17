@@ -17,9 +17,8 @@ Internally, each type has methods:
 	* `m_writeArg(value)`: write any supporting data to scratch memory, returns a value which a WebAssembly function can accept
 	* `m_write(value)`: write the value to scratch memory (after any supporting data)
 */
-export default function clapInterface(instance, hostMemorySize=1024*1024, logFn=null) {
+export default function clapInterface(instance, memory, hostMemorySize=1024*1024, logFn=null) {
 	let fullTypeKey = Symbol();
-	let memory = instance.exports.memory;
 	let functionTable = null;
 	if (!functionTable) {
 		for (let key in instance.exports) {

@@ -1,4 +1,4 @@
-function wasi_snapshot_preview1(args=[], env={}, fileResolver) {
+function wasi_snapshot_preview1(args=[], env={}, fileResolver, memory=null) {
 	for (let key in env) {
 		if (typeof env[key] !== 'string') env[key] += "";
 	}
@@ -27,11 +27,12 @@ function wasi_snapshot_preview1(args=[], env={}, fileResolver) {
 	fileHandles[1] = groupNewlines(console.log.bind(console)); // stdout
 	fileHandles[2] = groupNewlines(console.error.bind(console)); // stderr
 
-	let memory = null;
 	let wasi = {
 		// This seems to be the convention
 		set instance(instance) {
-			memory = instance.exports.memory;
+			if (instance.exports.memory) {
+				memory = instance.exports.memory;
+			}
 		},
 		environ_sizes_get(pCount, pSize) {
 			let count = 0, size = 0;
