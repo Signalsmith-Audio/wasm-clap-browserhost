@@ -11,7 +11,7 @@
 			body {
 				display: grid;
 				grid-template-areas: "audio buttons cpu" "before before before" "main main main" "after after after";
-				grid-template-rows: min-content min-content 1fr;
+				grid-template-rows: min-content min-content 1fr min-content;
 				grid-template-columns: 2fr minmax(min-content, 1fr) 2rem;
 				
 				position: fixed;
@@ -30,8 +30,8 @@
 			}
 			@media (max-width: 400pt) {
 				body {
-					grid-template-areas: "audio cpu" "buttons buttons" "main main";
-					grid-template-rows: min-content 2rem 1fr;
+					grid-template-areas: "audio cpu" "buttons buttons" "before before" "main main" "after after";
+					grid-template-rows: min-content 2rem min-content 1fr min-content;
 					grid-template-columns: 1fr 2rem;
 				}
 			}
@@ -107,8 +107,11 @@
 			#after {
 				grid-area: after;
 			}
-			#before iframe, #after iframe {
-				height: 6rem;
+			#before iframe {
+				height: 4rem;
+			}
+			#after iframe {
+				height: 8rem;
 			}
 			main {
 				grid-area: main;
