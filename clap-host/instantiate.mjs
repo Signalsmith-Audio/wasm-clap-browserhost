@@ -18,7 +18,7 @@ export default async function instantiate(options) {
 			}
 		});
 		if (!imports.wasi_snapshot_preview1) {
-			imports.wasi_snapshot_preview1 = wasi_snapshot_preview1([], {}, null, imports.env.memory);
+			imports.wasi_snapshot_preview1 = wasi_snapshot_preview1([], {}, null, imports.env?.memory);
 		}
 
 		instance = await WebAssembly.instantiate(await module.module, imports);
