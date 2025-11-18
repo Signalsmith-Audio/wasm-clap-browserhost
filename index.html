@@ -10,7 +10,7 @@
 			}
 			body {
 				display: grid;
-				grid-template-areas: "audio buttons cpu" "keyboard keyboard keyboard" "main main main";
+				grid-template-areas: "audio buttons cpu" "before before before" "main main main" "after after after";
 				grid-template-rows: min-content min-content 1fr;
 				grid-template-columns: 2fr minmax(min-content, 1fr) 2rem;
 				
@@ -101,10 +101,13 @@
 				font-size: 0.75rem;
 				opacity: 0.5;
 			}
-			#keyboard {
-				grid-area: keyboard;
+			#before {
+				grid-area: before;
 			}
-			#keyboard iframe {
+			#after {
+				grid-area: after;
+			}
+			#before iframe, #after iframe {
 				height: 6rem;
 			}
 			main {
@@ -179,7 +182,7 @@
 			<button id="button-reset" title="reset / reload">❌</button>
 		</div>
 		<div id="cpu"></div>
-		<div id="keyboard"></div>
+		<div id="before"></div>
 		<main>
 			<div id="tabs">
 				<button id="tab-params">parameters</button>
@@ -187,6 +190,7 @@
 			</div>
 			<fieldset id="params"></fieldset>
 		</main>
+		<div id="after"></div>
 		<script type="module">
 			import ClapModule from "./audioworkletnode-clap.mjs";
 
@@ -340,9 +344,13 @@
 					// Insert before the effect
 					audioSource.connect(keyboardNode);
 					keyboardNode.connect(effectNode);
-					keyboardNode.connectEvents(effectNode);
-
-					document.querySelector('#keyboard').append(openInterfaceWithProxy(keyboardNode));
+					if (queryParams.get('keyboard') == "after") {
+						effectNode.connectEvents(keyboardNode);
+						document.querySelector("#after").append(openInterfaceWithProxy(keyboardNode));
+					} else {
+						keyboardNode.connectEvents(effectNode);
+						document.querySelector("#before").append(openInterfaceWithProxy(keyboardNode));
+					}
 				}
 
 				function makeSlider(param) {
