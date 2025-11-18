@@ -1,5 +1,10 @@
 import clapModule from "./clap-host/clap-module.mjs";
 
+if (!globalThis.clapRouting) {
+	// Map from instance ID -> `{events: [...]}`
+	globalThis.clapRouting = Object.create(null);
+}
+
 // Unofficial pre-draft draft, but included here for compatibility
 clapModule.addExtension("clap.webview/1", {
 	wasm: {
@@ -65,6 +70,13 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	outputChannelCounts = [];
 	clapPlugin;
 	maxFramesCount = 1024;
+	
+	running = true;
+	routingId;
+	static #cleanup = new FinalizationRegistry(routingId => {
+		console.log("removing CLAP instance: " + routingId);
+		delete globalThis.clapRouting[routingId];
+	});
 
 	constructor(options) {
 		super();
@@ -83,6 +95,14 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			this.clapPlugin = clapPlugin;
 			this.clapUpdateAudioPorts();
 			this.clapActivate();
+			
+			// Manage the routing entry
+			this.routingId = pluginId + "/" + Math.random().toString(16).substr(2);
+			console.log("registered: " + this.routingId);
+			globalThis.clapRouting[this.routingId] = {
+				events: []
+			};
+			AudioWorkletProcessorClap.#cleanup.register(this, this.routingId);
 			
 			let webviewStartPage = null;
 			let webviewExt = this.clapPlugin.ext['clap.webview/3'];
@@ -117,6 +137,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 
 			// initial message lists plugin descriptor and remote methods
 			this.port.postMessage({
+				routingId: this.routingId,
 				desc: clapPlugin.api.clap_plugin_descriptor(clapPlugin.plugin.desc),
 				methods: Object.keys(this.remoteMethods),
 				webview: webviewStartPage,
@@ -185,7 +206,19 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		return {
 			input_events_size: () => this.pendingEvents.length,
 			input_events_get: i => this.pendingEvents[i],
-			output_events_try_push: ptr => false,
+			output_events_try_push: ptr => {
+				let plugin = this.clapPlugin;
+				let header = plugin.api.clap_event_header(ptr);
+				let bytes = plugin.api.asTyped(Uint8Array, ptr, header.size);
+				
+				for (let otherId in this.eventTargets) {
+					if (globalThis.clapRouting[otherId]) {
+						globalThis.clapRouting[otherId].events.push(bytes);
+						console.log("sent event to", otherId, bytes);
+					}
+				}
+				return true;
+			},
 
 			request_restart() {throw Error("not implemented");},
 			request_process() {throw Error("not implemented");},
@@ -256,7 +289,42 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		};
 	};
 	
+	eventToBytes(type, event) {
+		let plugin = this.clapPlugin;
+		let eventPtr = plugin.api.temp(type, event);
+		let size = plugin.api.sizeof(type);
+		let bytes = plugin.api.asTyped(Uint8Array, eventPtr, size);
+		return bytes.slice(0);
+	}
+	
+	// Copies event bytes back into the WASM (temporary) memory, and clears the list
+	writePendingEvents() {
+		let plugin = this.clapPlugin;
+		this.pendingEvents = globalThis.clapRouting[this.routingId].events.map(eventBytes => {
+			let ptr = plugin.api.tempBytes(eventBytes.length);
+			plugin.api.asTyped(Uint8Array, ptr, eventBytes.length).set(eventBytes);
+			return ptr;
+		});
+		globalThis.clapRouting[this.routingId].events = [];
+	}
+	
+	eventTargets = {};
+	
 	remoteMethods = {
+		pause() {
+			this.running = false;
+		},
+		resume() {
+			this.running = true;
+		},
+		connectEvents(otherId) {
+			this.eventTargets[otherId] = true;
+		},
+		disconnectEvents(otherId) {
+			if (otherId == null) {
+				this.eventTargets = {};
+			}
+		},
 		saveState() {
 			let plugin = this.clapPlugin;
 			let state = plugin.ext['clap.state'];
@@ -289,7 +357,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			let params = plugin.ext['clap.params'];
 			if (!params) throw Error("clap.params not supported");
 			
-			let eventPtr = plugin.api.temp(plugin.api.clap_event_param_value, {
+			let eventBytes = this.eventToBytes(plugin.api.clap_event_param_value, {
 				header: {
 					size: plugin.api.sizeof(plugin.api.clap_event_param_value),
 					time: 0,
@@ -306,8 +374,10 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 				
 				value: value
 			});
-			this.pendingEvents = [eventPtr];
+			globalThis.clapRouting[this.routingId].events.push(eventBytes);
+
 			// Single-threaded, so no reason not to immediately flush
+			this.writePendingEvents();
 			params.flush(plugin.hostPointers.input_events, plugin.hostPointers.output_events);
 			this.pendingEvents = [];
 			
@@ -436,7 +506,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	#averageWasmMs = 0;
 	
 	process(inputs, outputs, parameters) {
-		if (this.fatalError) return false;
+		if (this.fatalError || !this.running) return false;
 		let jsStartTime = Date.now();
 		if (!this.clapPlugin) return true; // outputs are pre-filled with silence
 		let {api, plugin} = this.clapPlugin;
@@ -524,7 +594,9 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			in_events: this.clapPlugin.hostPointers.input_events,
 			out_events: this.clapPlugin.hostPointers.output_events
 		});
-		
+
+		this.writePendingEvents();
+
 		let wasmStartTime, wasmEndTime;
 		let status;
 		try {
@@ -544,7 +616,16 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 		// Read audio buffers out again
 		outputs.forEach((output, portIndex) => {
 			let audioPort = this.audioPortsOut[portIndex];
-			if (!audioPort) return;
+			if (!audioPort) { // pass through
+				let inputPort = inputs[portIndex];
+				if (inputPort && inputPort.length) {
+					output.forEach((channel, index) => {
+						// Probably a dummy one used to get event routing in the correct order - copy input across
+						channel.set(inputPort[index%inputPort.length]);
+					});
+				}
+				return;
+			}
 			let outputPointers = allOutputPointers[portIndex];
 			output.forEach((channel, index) => {
 				index = index%audioPort.channel_count;

@@ -1,12 +1,11 @@
 import clapModule from "./clap-host/clap-module.mjs";
 
-function addRemoteMethods(node) {
-}
-
 export default class ClapModule {
 	url;
 	#m_modulePromise;
 	#m_moduleAdded = Symbol();
+	
+	static #m_routingId = Symbol();
 
 	constructor(moduleOptions) {
 		if (typeof moduleOptions === 'string') moduleOptions = {url: moduleOptions};
@@ -75,9 +74,19 @@ export default class ClapModule {
 		
 		return new Promise(resolve => {
 			effectNode.port.onmessage = e => {
-				let {desc, methods, webview} = e.data;
+				let {routingId, desc, methods, webview} = e.data;
+				effectNode[ClapModule.#m_routingId] = routingId;
 				effectNode.descriptor = desc;
 				methods.forEach(addRemoteMethod);
+				// For [dis]connectEvents, replace the other node with its ID
+				effectNode.connectEvents = (prevMethod => otherNode => {
+					if (otherNode[ClapModule.#m_routingId] != null) {
+						return prevMethod(otherNode[ClapModule.#m_routingId]);
+					}
+				})(effectNode.connectEvents);
+				effectNode.disconnectEvents = (prevMethod => nodeOrNull => {
+					return prevMethod(nodeOrNull?.[ClapModule.#m_routingId]);
+				})(effectNode.disconnectEvents);
 				
 				let prevGetResource = effectNode.getResource;
 				effectNode.getResource = async path => {
@@ -147,6 +156,12 @@ export default class ClapModule {
 						iframe = null;
 					}
 				}
+				
+				let prevConnect = effectNode.connect;
+				effectNode.connect = function() {
+					effectNode.resume();
+					prevConnect.apply(this, arguments);
+				};
 
 				resolve(effectNode);
 			};

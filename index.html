@@ -10,8 +10,8 @@
 			}
 			body {
 				display: grid;
-				grid-template-areas: "audio buttons cpu" "main main main";
-				grid-template-rows: min-content 1fr;
+				grid-template-areas: "audio buttons cpu" "keyboard keyboard keyboard" "main main main";
+				grid-template-rows: min-content min-content 1fr;
 				grid-template-columns: 2fr minmax(min-content, 1fr) 2rem;
 				
 				position: fixed;
@@ -101,6 +101,12 @@
 				font-size: 0.75rem;
 				opacity: 0.5;
 			}
+			#keyboard {
+				grid-area: keyboard;
+			}
+			#keyboard iframe {
+				height: 6rem;
+			}
 			main {
 				grid-area: main;
 				display: flex;
@@ -124,6 +130,8 @@
 			}
 			iframe {
 				flex-grow: 1;
+				width: 100%;
+				height: 100%;
 				/* funky border to make it clearer which part of the UI is hosted*/
 				background: #6F6;
 				border: 1px dashed #F0F;
@@ -171,6 +179,7 @@
 			<button id="button-reset" title="reset / reload">❌</button>
 		</div>
 		<div id="cpu"></div>
+		<div id="keyboard"></div>
 		<main>
 			<div id="tabs">
 				<button id="tab-params">parameters</button>
@@ -182,6 +191,8 @@
 			import ClapModule from "./audioworkletnode-clap.mjs";
 
 			async function startPage() {
+				let pageProxy = await pageProxyReady;
+
 				let queryParams = new URLSearchParams(window.location.search);
 				function updateQuery() {
 					history.replaceState(null, null, '?' + queryParams);
@@ -216,12 +227,9 @@
 				
 				['mousedown', 'focus'].forEach(name => {
 					window.addEventListener(name, e => {
-						if (queryParams.has('autostart')) audioContext.resume(name);
+						audioContext.resume(name);
 					}, {capture: true});
 				});
-				if (!queryParams.has('autostart')) {
-					audioContext.suspend();
-				}
 				['play'].forEach(name => {
 					window.addEventListener(name, e => audioContext.resume(name), {capture: true});
 				});
@@ -320,7 +328,23 @@
 					if (updateQueryStateTimer) return;
 					updateQueryStateTimer = setTimeout(updateQueryState, 100);
 				};
-				
+
+				if (queryParams.has('keyboard')) {
+					let extrasModule = new ClapModule("./plugin/example-plugins-wasm32.wclap.tar.gz");
+					let keyboardNode = await extrasModule.createNode(audioContext, "uk.co.signalsmith-audio.plugins.example-keyboard", {
+						numberOfInputs: 1,
+						numberOfOutputs: 1,
+						outputChannelCount: [2]
+					});
+					audioSource.disconnect();
+					// Insert before the effect
+					audioSource.connect(keyboardNode);
+					keyboardNode.connect(effectNode);
+					keyboardNode.connectEvents(effectNode);
+
+					document.querySelector('#keyboard').append(openInterfaceWithProxy(keyboardNode));
+				}
+
 				function makeSlider(param) {
 					let group = $('#params');
 					let label = document.createElement('label');
@@ -361,7 +385,23 @@
 				params.forEach(makeSlider);
 
 				let iframe;
-				let pageProxy = await pageProxyReady;
+				function openInterfaceWithProxy(effectNode) {
+					let frameId = "iframe-" + crypto.randomUUID();
+					let iframe = effectNode.openInterface({
+						filePrefix: pageProxy.prefix + frameId + "/file",
+						resourcePrefix: pageProxy.prefix + frameId + "/get_resource"
+					});
+					iframe.id = frameId;
+					iframe[pageProxy.symbol] = async path => {
+						if (/^\/file\//.test(path)) {
+							return effectNode.getFile(path.substr(5));
+						} else if (/^\/get_resource\//.test(path)) {
+							return effectNode.getResource(path.substr(13));
+						}
+					};
+					return iframe;
+				}
+				
 				function selectTab(webUi) {
 					if (iframe) {
 						// tell the effect that the webview is closed
@@ -375,19 +415,7 @@
 						$('#tab-ui').classList.add("active");
 						$('#params').style.display = 'none';
 						if (effectNode.openInterface) {
-							let frameId = "iframe-" + crypto.randomUUID();
-							iframe = effectNode.openInterface({
-								filePrefix: pageProxy.prefix + frameId + "/file",
-								resourcePrefix: pageProxy.prefix + frameId + "/get_resource"
-							});
-							iframe.id = frameId;
-							iframe[pageProxy.symbol] = async path => {
-								if (/^\/file\//.test(path)) {
-									return effectNode.getFile(path.substr(5));
-								} else if (/^\/get_resource\//.test(path)) {
-									return effectNode.getResource(path.substr(13));
-								}
-							};
+							iframe = openInterfaceWithProxy(effectNode);
 							$('main').append(iframe);
 						}
 					} else {
