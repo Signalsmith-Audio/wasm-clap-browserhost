@@ -179,6 +179,18 @@
 				display: flex;
 				align-items: center;
 				justify-content: center;
+				z-index: 1;
+				cursor: pointer;
+			}
+			#pause-overlay::before {
+				position: absolute;
+				top: 10vh;
+				left: 0;
+				width: 100vw;
+				height: 90vh;
+				background: linear-gradient(#0000, #0008, #000A, #0008, #0000);
+				content: '';
+				z-index: -1;
 			}
 		</style>
 	</head>
