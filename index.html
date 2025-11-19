@@ -107,12 +107,6 @@
 			#after {
 				grid-area: after;
 			}
-			#before iframe {
-				height: 4rem;
-			}
-			#after iframe {
-				height: 8rem;
-			}
 			main {
 				grid-area: main;
 				display: flex;
@@ -138,6 +132,10 @@
 				flex-grow: 1;
 				width: 100%;
 				height: 100%;
+				border: none;
+				border-radius: 0.3rem;
+			}
+			main iframe {
 				/* funky border to make it clearer which part of the UI is hosted*/
 				background: #6F6;
 				border: 1px dashed #F0F;
@@ -171,6 +169,17 @@
 				background: #048;
 				color: #FFF;
 			}
+			#pause-overlay {
+				grid-area: before / before / after / after;
+				background: #666A;
+				box-shadow: 0px 0px 5rem #666A;
+				color: #FFF;
+				font-weight: bold;
+				text-shadow: 0px 0px 0.1rem #000;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
 		</style>
 	</head>
 	<body>
@@ -194,6 +203,7 @@
 			<fieldset id="params"></fieldset>
 		</main>
 		<div id="after"></div>
+		<div id="pause-overlay">AudioContext paused</div>
 		<script type="module">
 			import ClapModule from "./audioworkletnode-clap.mjs";
 
@@ -207,6 +217,10 @@
 
 				let $ = document.querySelector.bind(document);
 				let audioContext = new AudioContext();
+				audioContext.addEventListener('statechange', e => {
+					let running = (audioContext.state == 'running');
+					document.querySelector('#pause-overlay').style.display = running ? 'none' : 'flex';
+				});
 				
 				let audioElement = $('audio');
 				audioElement.src = queryParams.get('audio') || 'audio/loop.mp3';
@@ -336,24 +350,30 @@
 					updateQueryStateTimer = setTimeout(updateQueryState, 100);
 				};
 
-				if (queryParams.has('keyboard')) {
-					let extrasModule = new ClapModule("./plugin/example-plugins-wasm32.wclap.tar.gz");
+				let extrasModule = new ClapModule("./plugin/example-plugins-wasm32.wclap.tar.gz");
+				let keyboardBefore = ['note-effect', 'instrument'].some(feature => effectNode.descriptor.features.indexOf(feature) >= 0);
+				let keyboardAfter = ['note-effect', 'note-detector'].some(feature => effectNode.descriptor.features.indexOf(feature) >= 0);
+				let scopeBefore = ['audio-effect', 'note-detector'].some(feature => effectNode.descriptor.features.indexOf(feature) >= 0);
+				let scopeAfter = ['audio-effect', 'instrument'].some(feature => effectNode.descriptor.features.indexOf(feature) >= 0);
+				if (keyboardBefore) {
 					let keyboardNode = await extrasModule.createNode(audioContext, "uk.co.signalsmith-audio.plugins.example-keyboard", {
 						numberOfInputs: 1,
 						numberOfOutputs: 1,
 						outputChannelCount: [2]
 					});
-					audioSource.disconnect();
-					// Insert before the effect
-					audioSource.connect(keyboardNode);
 					keyboardNode.connect(effectNode);
-					if (queryParams.get('keyboard') == "after") {
-						effectNode.connectEvents(keyboardNode);
-						document.querySelector("#after").append(openInterfaceWithProxy(keyboardNode));
-					} else {
-						keyboardNode.connectEvents(effectNode);
-						document.querySelector("#before").append(openInterfaceWithProxy(keyboardNode));
-					}
+					keyboardNode.connectEvents(effectNode);
+					document.querySelector("#before").append(openInterfaceWithProxy(keyboardNode, '4rem'));
+				}
+				if (keyboardAfter) {
+					let keyboardNode = await extrasModule.createNode(audioContext, "uk.co.signalsmith-audio.plugins.example-keyboard", {
+						numberOfInputs: 1,
+						numberOfOutputs: 1,
+						outputChannelCount: [2]
+					});
+					effectNode.connect(keyboardNode);
+					effectNode.connectEvents(keyboardNode);
+					document.querySelector("#after").append(openInterfaceWithProxy(keyboardNode, '8rem'));
 				}
 
 				function makeSlider(param) {
@@ -396,7 +416,7 @@
 				params.forEach(makeSlider);
 
 				let iframe;
-				function openInterfaceWithProxy(effectNode) {
+				function openInterfaceWithProxy(effectNode, height) {
 					let frameId = "iframe-" + crypto.randomUUID();
 					let iframe = effectNode.openInterface({
 						filePrefix: pageProxy.prefix + frameId + "/file",
@@ -410,6 +430,7 @@
 							return effectNode.getResource(path.substr(13));
 						}
 					};
+					if (height) iframe.style.height = height;
 					return iframe;
 				}
 				

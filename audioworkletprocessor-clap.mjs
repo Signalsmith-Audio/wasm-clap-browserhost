@@ -74,7 +74,6 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	running = true;
 	routingId;
 	static #cleanup = new FinalizationRegistry(routingId => {
-		console.log("removing CLAP instance: " + routingId);
 		delete globalThis.clapRouting[routingId];
 	});
 
@@ -98,7 +97,6 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			
 			// Manage the routing entry
 			this.routingId = pluginId + "/" + Math.random().toString(16).substr(2);
-			console.log("registered: " + this.routingId);
 			globalThis.clapRouting[this.routingId] = {
 				events: []
 			};
@@ -214,7 +212,6 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 				for (let otherId in this.eventTargets) {
 					if (globalThis.clapRouting[otherId]) {
 						globalThis.clapRouting[otherId].events.push(bytes);
-						console.log("sent event to", otherId, bytes);
 					}
 				}
 				return true;
