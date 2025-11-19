@@ -149,7 +149,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			
 			let data = event.data;
 			if (data instanceof ArrayBuffer) {
-				let webviewExt = this.clapPlugin.ext['clap.webview/2'] || this.clapPlugin.ext['clap.webview/1'];
+				let webviewExt = this.clapPlugin.ext['clap.webview/3'] || this.clapPlugin.ext['clap.webview/2'] || this.clapPlugin.ext['clap.webview/1'];
 				if (webviewExt) {
 					let buffer = this.clapPlugin.api.tempTyped(Uint8Array, data.byteLength);
 					buffer.set(new Uint8Array(data));

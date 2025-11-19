@@ -4,13 +4,31 @@ function wasi_snapshot_preview1(args=[], env={}, fileResolver, memory=null) {
 	}
 	
 	if (!fileResolver) fileResolver = () => null;
+	// Values in octal
+	//#define S_IFMT 0170000           /* type of file */
+	//#define        S_IFIFO  0010000  /* named pipe (fifo) */
+	//#define        S_IFCHR  0020000  /* character special */
+	//#define        S_IFDIR  0040000  /* directory */
+	//#define        S_IFBLK  0060000  /* block special */
+	//#define        S_IFREG  0100000  /* regular */
+	//#define        S_IFLNK  0120000  /* symbolic link */
+	//#define        S_IFSOCK 0140000  /* socket */
+	//#define        S_IFWHT  0160000  /* whiteout */
+	//#define S_ISUID 0004000  /* set user id on execution */
+	//#define S_ISGID 0002000  /* set group id on execution */
+	//#define S_ISVTX 0001000  /* save swapped text even after use */
+	//#define S_IRUSR 0000400  /* read permission, owner */
+	//#define S_IWUSR 0000200  /* write permission, owner */
+	//#define S_IXUSR 0000100  /* execute/search permission, owner */
 	
 	let fileHandles = {};
-	function groupNewlines(fn) {
-		let pending = "";
+	function stdToConsole(fn) {
+		let pending = ""; // collect until we have a newline
 		return {
 			offset: 0,
 			length: 0,
+			filetype: 2, // S_IFCHR: character device
+			flags: 0,
 			write(arr) {
 				for (let i = 0; i < arr.length; ++i) {
 					let c = String.fromCharCode(arr[i]);
@@ -24,8 +42,8 @@ function wasi_snapshot_preview1(args=[], env={}, fileResolver, memory=null) {
 			}
 		};
 	}
-	fileHandles[1] = groupNewlines(console.log.bind(console)); // stdout
-	fileHandles[2] = groupNewlines(console.error.bind(console)); // stderr
+	fileHandles[1] = stdToConsole(console.log.bind(console)); // stdout
+	fileHandles[2] = stdToConsole(console.error.bind(console)); // stderr
 
 	let wasi = {
 		// This seems to be the convention
@@ -34,6 +52,7 @@ function wasi_snapshot_preview1(args=[], env={}, fileResolver, memory=null) {
 				memory = instance.exports.memory;
 			}
 		},
+				
 		environ_sizes_get(pCount, pSize) {
 			let count = 0, size = 0;
 			for (let key in env) {
@@ -64,6 +83,21 @@ function wasi_snapshot_preview1(args=[], env={}, fileResolver, memory=null) {
 				size += value.length + 1;
 			}
 			return 0;
+		},
+		fd_advise(fd, offset, length, advice) {
+			let file = fileHandles[fd];
+			if (!file) return 9; // bad file handle
+			return 0; // ignore
+		},
+		fd_fdstat_get(fd, ptr) {
+			let file = fileHandles[fd];
+			if (!file) return 9; // bad file handle
+			let view = new DataView(memory.buffer);
+			view.setUint8(ptr, file.filetype);
+			view.setUint16(ptr + 2, file.flags);
+			view.setBigUint64(ptr + 8, 0n, true);
+			view.setBigUint64(ptr + 16, 0n, true);
+			return 0; // no error
 		},
 		fd_seek(fd, offset, relativeTo) {
 			let file = fileHandles[fd];
