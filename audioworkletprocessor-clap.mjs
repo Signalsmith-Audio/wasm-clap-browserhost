@@ -207,7 +207,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			output_events_try_push: ptr => {
 				let plugin = this.clapPlugin;
 				let header = plugin.api.clap_event_header(ptr);
-				let bytes = plugin.api.asTyped(Uint8Array, ptr, header.size);
+				let bytes = plugin.api.asTyped(Uint8Array, ptr, header.size).slice(0);
 				
 				for (let otherId in this.eventTargets) {
 					if (globalThis.clapRouting[otherId]) {

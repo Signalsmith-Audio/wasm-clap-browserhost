@@ -258,7 +258,7 @@
 					e.stopPropagation();
 				});
 				
-				['mousedown', 'focus'].forEach(name => {
+				['pointerdown', 'keydown'].forEach(name => {
 					window.addEventListener(name, e => {
 						audioContext.resume(name);
 					}, {capture: true});
@@ -325,7 +325,6 @@
 						}
 					});
 				});
-				let instanceId = crypto.randomUUID();
 				let effectNode = await module.createNode(audioContext, pluginId, {
 					numberOfInputs: 1,
 					numberOfOutputs: 1,
