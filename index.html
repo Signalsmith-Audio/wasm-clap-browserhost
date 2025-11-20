@@ -169,29 +169,17 @@
 				background: #048;
 				color: #FFF;
 			}
-			#pause-overlay {
-				grid-area: before / before / after / after;
-				background: #666A;
-				box-shadow: 0px 0px 5rem #666A;
-				color: #FFF;
-				font-weight: bold;
-				text-shadow: 0px 0px 0.1rem #000;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				z-index: 1;
-				cursor: pointer;
-			}
-			#pause-overlay::before {
+			#pause-overlay::backdrop {
 				position: absolute;
 				top: 10vh;
 				left: 0;
 				width: 100vw;
 				height: 90vh;
-				background: linear-gradient(#0000, #0008, #000A, #0008, #0000);
+				background: linear-gradient(#0000, #0004, #0006, #0004, #0000);
 				content: '';
 				z-index: -1;
 			}
+			*/
 		</style>
 	</head>
 	<body>
@@ -215,7 +203,7 @@
 			<fieldset id="params"></fieldset>
 		</main>
 		<div id="after"></div>
-		<div id="pause-overlay">AudioContext paused</div>
+		<dialog id="pause-overlay">AudioContext paused</dialog>
 		<script type="module">
 			import ClapModule from "./audioworkletnode-clap.mjs";
 
@@ -229,9 +217,14 @@
 
 				let $ = document.querySelector.bind(document);
 				let audioContext = new AudioContext();
+				let overlay = document.querySelector('#pause-overlay');
+				overlay.showModal();
 				audioContext.addEventListener('statechange', e => {
-					let running = (audioContext.state == 'running');
-					document.querySelector('#pause-overlay').style.display = running ? 'none' : 'flex';
+					if (audioContext.state == 'running') {
+						overlay.close();
+					} else {
+						overlay.showModal();
+					}
 				});
 				
 				let audioElement = $('audio');
@@ -258,7 +251,7 @@
 					e.stopPropagation();
 				});
 				
-				['pointerdown', 'keydown'].forEach(name => {
+				['pointerdown'].forEach(name => {
 					window.addEventListener(name, e => {
 						audioContext.resume(name);
 					}, {capture: true});

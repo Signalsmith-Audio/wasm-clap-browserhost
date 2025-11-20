@@ -173,4 +173,29 @@ function wasi_snapshot_preview1(args=[], env={}, fileResolver, memory=null) {
 	return wasi;
 };
 
-export default wasi_snapshot_preview1;
+function wasi_threads(createThreadFn) {
+	return {
+		'thread-spawn': ptr => {
+			if (!createThreadFn) {
+				console.error("tried to spawn a thread, but not created with thread support");
+				return -1;
+			}
+			if (!globalThis.crossOriginIsolated) {
+				console.error("tried to spawn a thread, but environment isn't cross-origin isolated");
+				//return -2;
+			}
+			
+			// Hack for now - cross fingers and hope for no collisions
+			let threadId = (1 + Math.random()*0x1FFFFFFE)|0;
+			createThreadFn(threadId, ptr);
+			return threadId;
+		}
+	};
+}
+
+let wasi = {
+	wasi_snapshot_preview1: wasi_snapshot_preview1,
+	wasi_threads: wasi_threads
+};
+
+export default wasi;

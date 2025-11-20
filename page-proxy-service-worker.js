@@ -109,8 +109,11 @@ if (typeof ServiceWorkerGlobalScope !== "function") {
 				return new Promise(pass => {
 					requestMap[requestId] = blobOrNull => {
 						if (blobOrNull) {
-							if (0) false;
-							return pass(new Response(blobOrNull));
+							let response = new Response(blobOrNull);
+							response.headers.set("Access-Control-Allow-Origin", "*");
+							response.headers.set("Cross-Origin-Opener-Policy", "noopener-allow-popups");
+							response.headers.set("Cross-Origin-Embedder-Policy", "credentialless");
+							return pass(response);
 						}
 						pass(new Response(new Blob(["404 Not Found\n" + url], {type: 'text/plain'}), {status: 404}));
 					};

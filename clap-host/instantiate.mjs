@@ -1,7 +1,6 @@
-import wasi_snapshot_preview1 from "./wasi/wasi_snapshot_preview1.mjs";
+import wasi from "./wasi/wasi.mjs";
 
-// Later, we can inspect the imports to see if needs WASI, expects a memory import etc.
-export default async function instantiate(options) {
+export default async function instantiate(options, spawnThread, skipInit) {
 	let url = options.url;
 	if (!url) throw Error("missing `url` option");
 	let instance = options.instance;
@@ -9,16 +8,27 @@ export default async function instantiate(options) {
 		let module = options.module;
 		if (!module) throw Error("missing `module` data");
 
-		let imports = options.imports || {};
+		let imports = options.imports = options.imports || {};
 		WebAssembly.Module.imports(module.module).forEach(entry => {
 			if (entry.kind == 'memory') {
 				if (!imports[entry.module]) imports[entry.module] = Object.create(null);
+				if (imports[entry.module][entry.name]) return;
+
 				let memory = new WebAssembly.Memory({initial: 8, maximum: 32768, shared: true});
 				imports[entry.module][entry.name] = memory;
 			}
 		});
+		// These imports *don't* get passed to new threads, but recreated instead
+		imports = Object.assign({}, imports);
 		if (!imports.wasi_snapshot_preview1) {
-			imports.wasi_snapshot_preview1 = wasi_snapshot_preview1([], {}, null, imports.env?.memory);
+			imports.wasi_snapshot_preview1 = wasi.wasi_snapshot_preview1([], {}, null, imports.env?.memory);
+		}
+		if (!imports.wasi) {
+			if (imports.env?.memory && spawnThread) {
+				imports.wasi = wasi.wasi_threads((threadId, ptr) => spawnThread(options, threadId, ptr));
+			} else {
+				imports.wasi = wasi.wasi_threads(null);
+			}
 		}
 
 		instance = await WebAssembly.instantiate(await module.module, imports);
@@ -26,8 +36,10 @@ export default async function instantiate(options) {
 		imports.wasi_snapshot_preview1.instance = instance;
 		
 		// WASI entry points for standalone / dynamic
-		instance.exports._start?.();
-		instance.exports._initialize?.();
+		if (!skipInit) {
+			instance.exports._start?.();
+			instance.exports._initialize?.();
+		}
 
 		return {instance, imports};
 	}

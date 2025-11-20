@@ -1,5 +1,7 @@
 import clapModule from "./clap-host/clap-module.mjs";
 
+const thisUrl = import.meta.url;
+
 if (!globalThis.clapRouting) {
 	// Map from instance ID -> `{events: [...]}`
 	globalThis.clapRouting = Object.create(null);
@@ -65,6 +67,27 @@ clapModule.addExtension("clap.webview/2", {
 	}
 });
 
+if (globalThis.WorkerGlobalScope) {
+	console.log("started worker");
+	addEventListener('message', async e => {
+		let replyPort = e.ports[0];
+		console.log("worker received arguments:", e.data);
+		let options = e.data[0], threadId = e.data[1], threadArg = e.data[2];
+	
+		let spawnThread = (options, threadId, threadArg) => {
+			console.log("spawning worker thread (from inside worker)");
+			options = Object.assign({}, options);
+			options.module = null;
+			replyPort.postMessage(["worker", thisUrl, options, threadId, threadArg]);
+		};
+
+		let module = await clapModule(options, spawnThread, true/*skipInit*/);
+		module.wasmInstance.exports.wasi_thread_start(threadId, threadArg);
+	});
+
+	globalThis.AudioWorkletProcessor = globalThis.registerProcessor = function(){};
+}
+
 class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	inputChannelCounts = [];
 	outputChannelCounts = [];
@@ -79,10 +102,21 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 
 	constructor(options) {
 		super();
+		
+		let spawnThread = (options, threadId, threadArg) => {
+			console.log("spawning worker thread");
+			options = Object.assign({}, options);
+			options.module = null;
+			this.port.postMessage(["worker", thisUrl, options, threadId, threadArg]);
+		};
+		this.port.onmessageerror = e => {
+			console.error(e);
+			debugger;
+		};
 
 		let clapOptions = options.processorOptions;
 		if (!clapOptions) throw Error("no processorOptions");
-		clapModule(options?.processorOptions).then(async module => {
+		clapModule(options?.processorOptions, spawnThread).then(async module => {
 			let pluginId = clapOptions.pluginId;
 			if (!pluginId) {
 				let pluginIndex = clapOptions.pluginIndex || 0;

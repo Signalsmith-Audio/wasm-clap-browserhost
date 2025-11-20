@@ -73,7 +73,19 @@ export default class ClapModule {
 		effectNode.events = Object.create(null);
 		
 		return new Promise(resolve => {
+			function spawnWorker(data) {
+				if (data?.[0] == "worker") {
+					let moduleUrl = data[1], options = data[2], threadId = data[3], threadArg = data[4];
+					options.module = moduleObj;
+					let worker = new Worker(moduleUrl, {type: 'module', name: 'thread-' + threadId});
+					worker.postMessage([options, threadId, threadArg]);
+					return true;
+				}
+				return false;
+			}
+		
 			effectNode.port.onmessage = e => {
+				if (spawnWorker(e.data)) return;
 				let {routingId, desc, methods, webview} = e.data;
 				effectNode[ClapModule.#m_routingId] = routingId;
 				effectNode.descriptor = desc;
@@ -98,6 +110,7 @@ export default class ClapModule {
 				let iframe = null;
 
 				effectNode.port.onmessage = e => {
+					if (spawnWorker(e.data)) return;
 					let data = e.data;
 					if (data instanceof ArrayBuffer) {
 						// it's a message from the plugin

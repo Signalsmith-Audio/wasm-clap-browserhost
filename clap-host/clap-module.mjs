@@ -70,11 +70,11 @@ async function clapHostBinding(moduleInstance, api, factory) {
 	return hostBinding;
 }
 
-async function clapModule(options) {
+async function clapModule(options, spawnThread, skipInit) {
 	let url = options.url;
 	
-	if (!options.module) options.module = clapModule.fetchModule(url);
-	let instanceObj = await instantiate(options);
+	if (!options.module) options.module = await clapModule.fetchModule(url);
+	let instanceObj = await instantiate(options, spawnThread, skipInit);
 	let instance = instanceObj.instance;
 	let memory = instance.exports.memory || instanceObj.imports.env.memory;
 
@@ -110,7 +110,8 @@ async function clapModule(options) {
 		plugins: plugins,
 		async create(pluginId) {
 			return (await hostBindingPromise).m_getBound(pluginId);
-		}
+		},
+		wasmInstance: instance
 	};
 }
 
