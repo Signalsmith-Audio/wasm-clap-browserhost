@@ -1,21 +1,26 @@
 import clapModule from "./clap-js/clap.mjs";
 
-export default class ClapModule {
-	url;
+export default class ClapAudioNode {
 	#m_modulePromise;
 	#m_moduleAdded = Symbol();
 	
 	static #m_routingId = Symbol();
 
-	constructor(moduleOptions) {
-		this.#m_modulePromise = clapModule(moduleOptions);
+	constructor(options) {
+		if (typeof options === 'string') {
+			options = {url: new URL(options, document.baseURI).href};
+		}
+		this.#m_modulePromise = clapModule(options);
 	}
 	
 	async plugins() {
+		// Spin up the WCLAP
 		let module = await this.#m_modulePromise;
 		let instance = await module.start();
+		// Get the plugin factory
 		let factoryPtr = instance.clap_entry.get_factory(instance.writeString(instance.api.CLAP_PLUGIN_FACTORY_ID));
-		let factory = instance.api.clap_plugin_factory.read(factoryPtr);
+		let factory = factoryPtr.getAs('clap_plugin_factory');
+		
 		let count = factory.get_plugin_count(factoryPtr);
 		let list = [];
 		for (let i = 0; i < count; ++i) {
@@ -24,19 +29,19 @@ export default class ClapModule {
 				let ptr = desc[key].pointer;
 				desc[key] = ptr ? instance.readString(ptr) : null;
 			});
-			// Null-terminated list of strings
-			let featuresPtr = desc.features;
+			
+			// `.features` is a null-terminated list of null-terminated strings
 			let featureCount = 0;
-			desc.features = [];
-			while (featuresPtr.get(featureCount).pointer) {
-				let stringPtr = featuresPtr.get(featureCount);
-				desc.features.push(instance.readString(stringPtr));
+			let featureStrings = [];
+			while (desc.features.get(featureCount).pointer) {
+				let stringPtr = desc.features.get(featureCount);
+				featureStrings.push(instance.readString(stringPtr));
 				++featureCount;
 			}
+			desc.features = featureStrings;
 			
 			list.push(desc);
 		}
-		console.log(JSON.stringify(list, null, '\t'));
 		return list;
 	}
 	
@@ -52,7 +57,6 @@ export default class ClapModule {
 		};
 		let moduleObj = await this.#m_modulePromise;
 		nodeOptions.processorOptions = {
-			url: this.url,
 			module: moduleObj,
 			pluginId: pluginId
 		};
@@ -101,17 +105,17 @@ export default class ClapModule {
 			effectNode.port.onmessage = e => {
 				if (spawnWorker(e.data)) return;
 				let {routingId, desc, methods, webview} = e.data;
-				effectNode[ClapModule.#m_routingId] = routingId;
+				effectNode[ClapAudioNode.#m_routingId] = routingId;
 				effectNode.descriptor = desc;
 				methods.forEach(addRemoteMethod);
 				// For [dis]connectEvents, replace the other node with its ID
 				effectNode.connectEvents = (prevMethod => otherNode => {
-					if (otherNode[ClapModule.#m_routingId] != null) {
-						return prevMethod(otherNode[ClapModule.#m_routingId]);
+					if (otherNode[ClapAudioNode.#m_routingId] != null) {
+						return prevMethod(otherNode[ClapAudioNode.#m_routingId]);
 					}
 				})(effectNode.connectEvents);
 				effectNode.disconnectEvents = (prevMethod => nodeOrNull => {
-					return prevMethod(nodeOrNull?.[ClapModule.#m_routingId]);
+					return prevMethod(nodeOrNull?.[ClapAudioNode.#m_routingId]);
 				})(effectNode.disconnectEvents);
 				
 				let prevGetResource = effectNode.getResource;

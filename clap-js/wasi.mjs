@@ -193,35 +193,49 @@ function wasi_threads(createThreadFn) {
 	};
 }
 
-export default function addWasi(imports, memory) {
-	let wasiMethods = {};
+class WasiRunning {
+	#config;
+	#memory = null;
+	#instance;
+	wasiMethods = {};
 
-	let methods = {
-		wasi_snapshot_preview1: 'args_get,args_sizes_get,clock_res_get,clock_time_get,environ_get,environ_sizes_get,fd_advise,fd_allocate,fd_close,fd_datasync,fd_fdstat_get,fd_fdstat_set_flags,fd_fdstat_set_rights,fd_filestat_get,fd_filestat_set_size,fd_filestat_set_times,fd_pread,fd_prestat_get,fd_prestat_dir_name,fd_pwrite,fd_read,fd_readdir,fd_renumber,fd_seek,fd_sync,fd_tell,fd_write,path_create_directory,path_filestat_get,path_filestat_set_times,path_link,path_open,path_readlink,path_remove_directory,path_rename,path_symlink,path_unlink_file,poll_oneoff,proc_exit,proc_raise,random_get,sched_yield,sock_recv,sock_send,sock_shutdown'
-	};
-	for (let group in methods) {
-		imports[group] = imports[group] || {};
-		methods[group].split(',').forEach(name => {
-			if (imports[group][name]) return;
-			let exportName = `${group}__${name}`;
-			wasiMethods[exportName] = _ => {throw Error(`Not implemented: ${group}.${name}`)};
-			imports[group][name] = (...args) => wasiMethods[exportName](...args);
-		});
+	constructor(config, imports) {
+		this.#config = config;
+		let pointerBytes = 4;
+
+		let methods = {
+			wasi_snapshot_preview1: 'args_get,args_sizes_get,clock_res_get,clock_time_get,environ_get,environ_sizes_get,fd_advise,fd_allocate,fd_close,fd_datasync,fd_fdstat_get,fd_fdstat_set_flags,fd_fdstat_set_rights,fd_filestat_get,fd_filestat_set_size,fd_filestat_set_times,fd_pread,fd_prestat_get,fd_prestat_dir_name,fd_pwrite,fd_read,fd_readdir,fd_renumber,fd_seek,fd_sync,fd_tell,fd_write,path_create_directory,path_filestat_get,path_filestat_set_times,path_link,path_open,path_readlink,path_remove_directory,path_rename,path_symlink,path_unlink_file,poll_oneoff,proc_exit,proc_raise,random_get,sched_yield,sock_recv,sock_send,sock_shutdown'
+		};
+		for (let group in methods) {
+			imports[group] = imports[group] || {};
+			methods[group].split(',').forEach(name => {
+				if (imports[group][name]) return;
+				let exportName = `${group}__${name}`;
+				this.wasiMethods[exportName] = _ => {throw Error(`Not implemented: ${group}.${name}`)};
+				imports[group][name] = (...args) => this.wasiMethods[exportName](this.basePtr, ...args);
+			});
+		}
 	}
-	
-	let wasmUrl = new URL("./wasi/wasm32.wasm", import.meta.url);
-	let modulePromise = WebAssembly.compileStreaming(fetch(wasmUrl));
-	
-	return async memory => {
-		console.log("WASI module imports", WebAssembly.Module.imports(await modulePromise));
-		
+
+	// Starts the instance and binds the methods - but `malloc()` might not actually be ready to use yet
+	async start(memory, malloc) {
 		function fromString(ptr, length) {
-			return new TextDecoder('utf-8').decode(new Uint8Array(memory.buffer, ptr, length));
+			let buffer = new Uint8Array(memory.buffer, ptr, length);
+			if (typeof TextDecoder === 'function') {
+				return new TextDecoder('utf-8').decode(buffer);
+			} else {
+				let str = "";
+				for (let i = 0; i < length; ++i) {
+					str += String.fromCharCode(buffer[i]);
+				}
+				return str;
+			}
 		}
 		
 		let wasiImports = {
 			env: {
 				memory: memory,
+				malloc: malloc,
 				log: (ptr, length) => {
 					console.log(fromString(ptr, length));
 				},
@@ -230,9 +244,43 @@ export default function addWasi(imports, memory) {
 				}
 			}
 		}
-		let instance = await WebAssembly.instantiate(await modulePromise, wasiImports);
-		for (let key in instance.exports) {
-			wasiMethods[key] = instance.exports[key];
+		this.#instance = await WebAssembly.instantiate(this.#config.module, wasiImports);
+		for (let key in this.#instance.exports) {
+			this.wasiMethods[key] = this.#instance.exports[key];
 		}
 	}
+	
+	async reserveMemory() {
+		if (!this.#config.initialised) {
+			this.#config.initialised = true;
+			this.#config.basePtr = this.#instance.exports.reserveMemory();
+		}
+	};
+}
+
+class WasiConfig {
+	initialised = false;
+	module;
+	basePtr = null;
+	
+	constructor(initObj) {
+		Object.assign(this, initObj);
+	}
+
+	createInstance(imports) {
+		return new WasiRunning(this, imports);
+	}
+
+	static async fetch() {
+		let wasmUrl = new URL("./wasi/wasm32.wasm", import.meta.url).href;
+		let module = await WebAssembly.compileStreaming(fetch(wasmUrl));
+		return new WasiConfig({module: module});
+	}
+}
+
+export default function createWasi(options) {
+	if (options?.module instanceof WebAssembly.Module) {
+		return new WasiConfig(options);
+	}
+	return WasiConfig.fetch();
 }

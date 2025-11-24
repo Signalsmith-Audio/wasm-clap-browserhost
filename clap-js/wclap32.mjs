@@ -14,6 +14,11 @@ let api = {
 			valueOf() {
 				return this.pointer;
 			},
+			getAs(otherType, index) {
+				if (typeof otherType == 'string') otherType = api[otherType];
+				let itemPointer = this.pointer + (index || 0)*otherType.size;
+				return otherType.read(itemPointer);
+			},
 			get(index) {
 				let itemPointer = this.pointer + (index || 0)*type.size;
 				return type.read(itemPointer);
@@ -63,14 +68,18 @@ let api = {
 			let fnIndex = api.uint32.readWith(addr, dataView);
 			let fn = functionTable.get(fnIndex);
 			return (...args) => {
-				args = args.map(arg => {
-					if (typeof arg == 'boolean') return +arg;
-					if (typeof arg.pointer == 'number') return arg.pointer;
-					if (typeof arg == 'number') return arg;
-					console.error(typeof arg, arg);
-					throw Error("all WASM arguments need to be number/bool/pointer");
+				let result = scratchArena.scoped(_ => {
+					args = args.map(arg => {
+						if (arg === null) arg = 0;
+						if (typeof arg == 'boolean') return +arg;
+						if (typeof arg?.pointer == 'number') return arg.pointer;
+						if (typeof arg == 'number') return arg;
+						if (typeof arg == 'string') return scratchArena.writeString(arg);
+						console.error(typeof arg, arg);
+						throw Error("all WASM arguments need to be number/bool/pointer");
+					});
+					return fn(...args);
 				});
-				let result = fn(...args);
 				if (retType?.fromUntyped) {
 					return retType.fromUntyped(result);
 				}

@@ -1,4 +1,7 @@
-import clapModule from "./clap-host/clap-module.mjs";
+import clapModule from "./clap-js/clap.mjs";
+
+export default null;
+if (!globalThis.AudioWorkletProcessor) globalThis.AudioWorkletProcessor = globalThis.registerProcessor = function(){}
 
 const thisUrl = import.meta.url;
 
@@ -6,66 +9,6 @@ if (!globalThis.clapRouting) {
 	// Map from instance ID -> `{events: [...]}`
 	globalThis.clapRouting = Object.create(null);
 }
-
-// Unofficial pre-draft draft, but included here for compatibility
-clapModule.addExtension("clap.webview/1", {
-	wasm: {
-		ext_web_is_open: 'ip',
-		ext_web_send: 'ippi'
-	},
-	js: {
-		ext_web_is_open() {
-			// always open for now
-			return true;
-		},
-		// This is the name on the host struct, so it means the plugin has sent us a message
-		ext_web_send(voidPointer, length) {
-			return false;
-		}
-	},
-	addTypes(api, methods) {
-		api.clap_plugin_webview1compat = api.makeStruct(
-			{provide_starting_uri: api.makeFunc(api.pointer, api.pointer, api.u32)},
-			{receive: api.makeFunc(api.pointer, api.pointer, api.u32)}
-		);
-		api.clap_host_webview1compat = api.makeStruct(
-			{is_open: api.makeFunc(api.pointer)},
-			{send: api.makeFunc(api.pointer, api.pointer, api.u32)}
-		);
-		return api.save(api.clap_host_webview1compat, {
-			is_open: methods.ext_web_is_open,
-			send: methods.ext_webview_send
-		});
-	},
-	readPlugin(api, pointer, pluginPtr) {
-		return api.clap_plugin_webview1compat(pointer, pluginPtr);
-	}
-});
-clapModule.addExtension("clap.webview/2", {
-	wasm: {
-		ext_webview_send: 'ippi'
-	},
-	js: {
-		ext_webview_send(voidPointer, length) {
-			return false;
-		}
-	},
-	addTypes(api, methods) {
-		api.clap_plugin_webview2compat = api.makeStruct(
-			{get_uri: api.makeFunc(api.pointer, api.pointer, api.u32)},
-			{receive: api.makeFunc(api.pointer, api.pointer, api.u32)}
-		);
-		api.clap_host_webview2compat = api.makeStruct(
-			{send: api.makeFunc(api.pointer, api.pointer, api.u32)}
-		);
-		return api.save(api.clap_host_webview2compat, {
-			send: methods.ext_webview_send
-		});
-	},
-	readPlugin(api, pointer, pluginPtr) {
-		return api.clap_plugin_webview2compat(pointer, pluginPtr);
-	}
-});
 
 if (globalThis.WorkerGlobalScope) {
 	console.log("started worker");
@@ -88,12 +31,15 @@ if (globalThis.WorkerGlobalScope) {
 	globalThis.AudioWorkletProcessor = globalThis.registerProcessor = function(){};
 }
 
-class AudioWorkletProcessorClap extends AudioWorkletProcessor {
+class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 	inputChannelCounts = [];
 	outputChannelCounts = [];
-	clapPlugin;
 	maxFramesCount = 1024;
-	
+
+	clapModule;
+	clapPlugin;
+	hostArena;
+
 	running = true;
 	routingId;
 	static #cleanup = new FinalizationRegistry(routingId => {
@@ -116,14 +62,24 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 
 		let clapOptions = options.processorOptions;
 		if (!clapOptions) throw Error("no processorOptions");
-		clapModule(options?.processorOptions, spawnThread).then(async module => {
+		clapModule(clapOptions, spawnThread).then(async module => {
 			let pluginId = clapOptions.pluginId;
 			if (!pluginId) {
 				let pluginIndex = clapOptions.pluginIndex || 0;
 				pluginId = module.plugins[pluginIndex].id;
 			}
 			
-			let clapPlugin = await module.create(pluginId);
+			let running = this.clapModule = await module.start();
+			
+			let factoryPtr = running.clap_entry.get_factory(running.writeString(running.api.CLAP_PLUGIN_FACTORY_ID));
+			let factory = factoryPtr.getAs('clap_plugin_factory');
+
+			//let hostArena = this.hostArena = running.getArena();
+			console.log(typeof Worker);
+
+			let clapPlugin = factory.create_plugin(factoryPtr, 0, running.writeString(pluginId));
+			debugger;
+
 			Object.assign(clapPlugin.hostJs, this.makeHostMethods());
 			this.clapPlugin = clapPlugin;
 			this.clapUpdateAudioPorts();
@@ -134,7 +90,7 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 			globalThis.clapRouting[this.routingId] = {
 				events: []
 			};
-			AudioWorkletProcessorClap.#cleanup.register(this, this.routingId);
+			ClapAudioWorkletProcessor.#cleanup.register(this, this.routingId);
 			
 			let webviewStartPage = null;
 			let webviewExt = this.clapPlugin.ext['clap.webview/3'];
@@ -689,4 +645,4 @@ class AudioWorkletProcessorClap extends AudioWorkletProcessor {
 	}
 }
 
-registerProcessor('audioworkletprocessor-clap', AudioWorkletProcessorClap);
+registerProcessor('audioworkletprocessor-clap', ClapAudioWorkletProcessor);

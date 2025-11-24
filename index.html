@@ -207,7 +207,8 @@
 		<div id="after"></div>
 		<dialog id="pause-overlay">AudioContext paused</dialog>
 		<script type="module">
-			import ClapModule from "./audioworkletnode-clap.mjs";
+			import ClapAudioNode from "./audioworkletnode-clap.mjs";
+import _for_debug from "./audioworkletprocessor-clap.mjs";
 
 			async function startPage() {
 				let pageProxy = await pageProxyReady;
@@ -299,7 +300,7 @@
 				};
 				
 				let wasmUrl = queryParams.get('module') || 'plugin/basics-1_0_0.wclap.tar.gz';
-				let module = new ClapModule(wasmUrl);
+				let module = new ClapAudioNode(wasmUrl);
 				let pluginId = queryParams.get('plugin') || null;
 				module.plugins().then(plugins => {
 					let select = $('#select-plugin-id');
@@ -356,7 +357,7 @@
 					updateQueryStateTimer = setTimeout(updateQueryState, 100);
 				};
 
-				let extrasModule = new ClapModule("./plugin/example-plugins-wasm32.wclap.tar.gz");
+				let extrasModule = new ClapAudioNode("./plugin/example-plugins-wasm32.wclap.tar.gz");
 				let keyboardBefore = ['note-effect', 'instrument'].some(feature => effectNode.descriptor.features.indexOf(feature) >= 0);
 				let keyboardAfter = ['note-effect', 'note-detector'].some(feature => effectNode.descriptor.features.indexOf(feature) >= 0);
 				let scopeBefore = ['audio-effect', 'note-detector'].some(feature => effectNode.descriptor.features.indexOf(feature) >= 0);
