@@ -25,8 +25,8 @@
 				overflow: auto;
 				
 				font-family: Verdana, sans-serif;
-				background: #444;
-				color: #FFF;
+				background: #8396A6;
+				color: #000;
 			}
 			@media (max-width: 400pt) {
 				body {
@@ -49,11 +49,12 @@
 				object-fit: cover;
 				z-index: -1;
 				pointer-events: none;
+				opacity: 0.5;
 			}
 			@media (max-aspect-ratio: 1) {
 				#background {
-					transform-origin: 50vmin 50vmin;
-					transform: rotate(90deg);
+					transform-origin: 50vmax 50vmax;
+					transform: rotate(-90deg);
 				}
 			}
 			#buttons, #tabs {
@@ -175,7 +176,7 @@
 				left: 0;
 				width: 100vw;
 				height: 90vh;
-				background: linear-gradient(#0000, #0004, #0006, #0004, #0000);
+				background: linear-gradient(#2010, #2014, #2016, #2014, #2010);
 				content: '';
 				z-index: -1;
 			}
@@ -185,7 +186,8 @@
 	<body>
 		<script src="page-proxy-service-worker.js"></script>
 		
-		<img id="background" src="rainbow-texture.jpg">
+		<!-- https://unsplash.com/photos/a-close-up-of-a-pink-and-blue-liquid-hNrd99q5peI -->
+		<img id="background" src="background.jpg">
 		<audio id="media" controls loop crossorigin></audio>
 		<div id="buttons">
 			<select id="select-plugin-id" title="select plugin"></select>
