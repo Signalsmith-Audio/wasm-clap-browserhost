@@ -1,4 +1,4 @@
-import clapModule from "./clap-host/clap-module.mjs";
+import clapModule from "./clap-js/clap.mjs";
 
 export default class ClapModule {
 	url;
@@ -8,22 +8,36 @@ export default class ClapModule {
 	static #m_routingId = Symbol();
 
 	constructor(moduleOptions) {
-		if (typeof moduleOptions === 'string') moduleOptions = {url: moduleOptions};
-		
-		let url = moduleOptions?.url;
-		// If we specify a directory (ends in `/`) then use `module.wasm`
-		if (/\/$/.test(url)) url += "module.wasm";
-		this.url = new URL(url, location.href).href;
-
-		this.#m_modulePromise = Promise.resolve(moduleOptions.module || clapModule.fetchModule(this.url));
+		this.#m_modulePromise = clapModule(moduleOptions);
 	}
-		
-	async plugins(processorOptions) {
-		let module = await clapModule({
-			url: this.url,
-			module: await this.#m_modulePromise
-		});
-		return module.plugins;
+	
+	async plugins() {
+		let module = await this.#m_modulePromise;
+		let instance = await module.start();
+		let factoryPtr = instance.clap_entry.get_factory(instance.writeString(instance.api.CLAP_PLUGIN_FACTORY_ID));
+		let factory = instance.api.clap_plugin_factory.read(factoryPtr);
+		let count = factory.get_plugin_count(factoryPtr);
+		let list = [];
+		for (let i = 0; i < count; ++i) {
+			let desc = factory.get_plugin_descriptor(factoryPtr, i).get();
+			['description', 'id', 'manual_url', 'name', 'support_url', 'url', 'vendor', 'version'].forEach(key => {
+				let ptr = desc[key].pointer;
+				desc[key] = ptr ? instance.readString(ptr) : null;
+			});
+			// Null-terminated list of strings
+			let featuresPtr = desc.features;
+			let featureCount = 0;
+			desc.features = [];
+			while (featuresPtr.get(featureCount).pointer) {
+				let stringPtr = featuresPtr.get(featureCount);
+				desc.features.push(instance.readString(stringPtr));
+				++featureCount;
+			}
+			
+			list.push(desc);
+		}
+		console.log(JSON.stringify(list, null, '\t'));
+		return list;
 	}
 	
 	async createNode(audioContext, pluginId, nodeOptions) {

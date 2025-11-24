@@ -1,8 +1,17 @@
+/*
+We need WASM functions (not JS imports) to add to another module's function table.
+Given a map `{fnName: signature, ...}`, this generates a WASM module with imports:
+	{
+		proxy: {fnName: (args) => ...}
+	}
+and corresponding exports.  This lets you (effectively) add JS functions to a WASM function table.
+ */
 export default function generateForwardingModuleWasm(methodSignatures) {
 	let typeCodes = {
+		/* void return type is special-cased below */
 		b: 0x7F, // bool (32-bit in wasm32)
-		p: 0x7F, // pointer
-		s: 0x7F, // size
+		p: 0x7F, // pointer (wasm32)
+		s: 0x7F, // size (wasm32)
 		i: 0x7F, // i32
 		I: 0x7E, // i64
 		f: 0x7D, // f32

@@ -1,0 +1,10695 @@
+{
+	"pointerBytes": 4,
+	"constants": {
+		"CLAP_VERSION_MAJOR": 1,
+		"CLAP_VERSION_MINOR": 2,
+		"CLAP_VERSION_REVISION": 7,
+		"CLAP_EVENT_NOTE_ON": 0,
+		"CLAP_EVENT_NOTE_OFF": 1,
+		"CLAP_EVENT_NOTE_CHOKE": 2,
+		"CLAP_EVENT_NOTE_END": 3,
+		"CLAP_EVENT_NOTE_EXPRESSION": 4,
+		"CLAP_EVENT_PARAM_VALUE": 5,
+		"CLAP_EVENT_PARAM_MOD": 6,
+		"CLAP_EVENT_PARAM_GESTURE_BEGIN": 7,
+		"CLAP_EVENT_PARAM_GESTURE_END": 8,
+		"CLAP_EVENT_TRANSPORT": 9,
+		"CLAP_EVENT_MIDI": 10,
+		"CLAP_EVENT_MIDI_SYSEX": 11,
+		"CLAP_EVENT_MIDI2": 12,
+		"CLAP_NOTE_EXPRESSION_VOLUME": 0,
+		"CLAP_NOTE_EXPRESSION_PAN": 1,
+		"CLAP_NOTE_EXPRESSION_TUNING": 2,
+		"CLAP_NOTE_EXPRESSION_VIBRATO": 3,
+		"CLAP_NOTE_EXPRESSION_EXPRESSION": 4,
+		"CLAP_NOTE_EXPRESSION_BRIGHTNESS": 5,
+		"CLAP_NOTE_EXPRESSION_PRESSURE": 6,
+		"CLAP_PROCESS_ERROR": 0,
+		"CLAP_PROCESS_CONTINUE": 1,
+		"CLAP_PROCESS_CONTINUE_IF_NOT_QUIET": 2,
+		"CLAP_PROCESS_TAIL": 3,
+		"CLAP_PROCESS_SLEEP": 4,
+		"CLAP_NAME_SIZE": 256,
+		"CLAP_PATH_SIZE": 1024,
+		"CLAP_AUDIO_PORT_IS_MAIN": 1,
+		"CLAP_AUDIO_PORT_SUPPORTS_64BITS": 2,
+		"CLAP_AUDIO_PORT_PREFERS_64BITS": 4,
+		"CLAP_AUDIO_PORT_REQUIRES_COMMON_SAMPLE_SIZE": 8,
+		"CLAP_AUDIO_PORTS_RESCAN_NAMES": 1,
+		"CLAP_AUDIO_PORTS_RESCAN_FLAGS": 2,
+		"CLAP_AUDIO_PORTS_RESCAN_CHANNEL_COUNT": 4,
+		"CLAP_AUDIO_PORTS_RESCAN_PORT_TYPE": 8,
+		"CLAP_AUDIO_PORTS_RESCAN_IN_PLACE_PAIR": 16,
+		"CLAP_AUDIO_PORTS_RESCAN_LIST": 32,
+		"CLAP_CONTEXT_MENU_TARGET_KIND_GLOBAL": 0,
+		"CLAP_CONTEXT_MENU_TARGET_KIND_PARAM": 1,
+		"CLAP_LOG_DEBUG": 0,
+		"CLAP_LOG_INFO": 1,
+		"CLAP_LOG_WARNING": 2,
+		"CLAP_LOG_ERROR": 3,
+		"CLAP_LOG_FATAL": 4,
+		"CLAP_LOG_HOST_MISBEHAVING": 5,
+		"CLAP_LOG_PLUGIN_MISBEHAVING": 6,
+		"CLAP_NOTE_PORTS_RESCAN_ALL": 1,
+		"CLAP_NOTE_PORTS_RESCAN_NAMES": 2,
+		"CLAP_PARAM_IS_STEPPED": 1,
+		"CLAP_PARAM_IS_PERIODIC": 2,
+		"CLAP_PARAM_IS_HIDDEN": 4,
+		"CLAP_PARAM_IS_READONLY": 8,
+		"CLAP_PARAM_IS_BYPASS": 16,
+		"CLAP_PARAM_IS_AUTOMATABLE": 32,
+		"CLAP_PARAM_IS_AUTOMATABLE_PER_NOTE_ID": 64,
+		"CLAP_PARAM_IS_AUTOMATABLE_PER_KEY": 128,
+		"CLAP_PARAM_IS_AUTOMATABLE_PER_CHANNEL": 256,
+		"CLAP_PARAM_IS_AUTOMATABLE_PER_PORT": 512,
+		"CLAP_PARAM_IS_MODULATABLE": 1024,
+		"CLAP_PARAM_IS_MODULATABLE_PER_NOTE_ID": 2048,
+		"CLAP_PARAM_IS_MODULATABLE_PER_KEY": 4096,
+		"CLAP_PARAM_IS_MODULATABLE_PER_CHANNEL": 8192,
+		"CLAP_PARAM_IS_MODULATABLE_PER_PORT": 16384,
+		"CLAP_PARAM_REQUIRES_PROCESS": 32768,
+		"CLAP_PARAM_IS_ENUM": 65536,
+		"CLAP_PARAM_RESCAN_VALUES": 1,
+		"CLAP_PARAM_RESCAN_TEXT": 2,
+		"CLAP_PARAM_RESCAN_INFO": 4,
+		"CLAP_PARAM_RESCAN_ALL": 8,
+		"CLAP_PARAM_CLEAR_ALL": 1,
+		"CLAP_PARAM_CLEAR_AUTOMATIONS": 2,
+		"CLAP_PARAM_CLEAR_MODULATIONS": 4,
+		"CLAP_PARAM_INDICATION_AUTOMATION_NONE": 0,
+		"CLAP_PARAM_INDICATION_AUTOMATION_PRESENT": 1,
+		"CLAP_PARAM_INDICATION_AUTOMATION_PLAYING": 2,
+		"CLAP_PARAM_INDICATION_AUTOMATION_RECORDING": 3,
+		"CLAP_PARAM_INDICATION_AUTOMATION_OVERRIDING": 4,
+		"CLAP_POSIX_FD_READ": 1,
+		"CLAP_POSIX_FD_WRITE": 2,
+		"CLAP_POSIX_FD_ERROR": 4,
+		"CLAP_REMOTE_CONTROLS_COUNT": 8,
+		"CLAP_RENDER_REALTIME": 0,
+		"CLAP_RENDER_OFFLINE": 1,
+		"CLAP_SURROUND_FL": 0,
+		"CLAP_SURROUND_FR": 1,
+		"CLAP_SURROUND_FC": 2,
+		"CLAP_SURROUND_LFE": 3,
+		"CLAP_SURROUND_BL": 4,
+		"CLAP_SURROUND_BR": 5,
+		"CLAP_SURROUND_FLC": 6,
+		"CLAP_SURROUND_FRC": 7,
+		"CLAP_SURROUND_BC": 8,
+		"CLAP_SURROUND_SL": 9,
+		"CLAP_SURROUND_SR": 10,
+		"CLAP_SURROUND_TC": 11,
+		"CLAP_SURROUND_TFL": 12,
+		"CLAP_SURROUND_TFC": 13,
+		"CLAP_SURROUND_TFR": 14,
+		"CLAP_SURROUND_TBL": 15,
+		"CLAP_SURROUND_TBC": 16,
+		"CLAP_SURROUND_TBR": 17,
+		"CLAP_SURROUND_TSL": 18,
+		"CLAP_SURROUND_TSR": 19,
+		"CLAP_TRACK_INFO_HAS_TRACK_NAME": 1,
+		"CLAP_TRACK_INFO_HAS_TRACK_COLOR": 2,
+		"CLAP_TRACK_INFO_HAS_AUDIO_CHANNEL": 4,
+		"CLAP_TRACK_INFO_IS_FOR_RETURN_TRACK": 8,
+		"CLAP_TRACK_INFO_IS_FOR_BUS": 16,
+		"CLAP_TRACK_INFO_IS_FOR_MASTER": 32,
+		"CLAP_VOICE_INFO_SUPPORTS_OVERLAPPING_NOTES": 1,
+		"CLAP_TRIGGER_IS_AUTOMATABLE_PER_NOTE_ID": 1,
+		"CLAP_TRIGGER_IS_AUTOMATABLE_PER_KEY": 2,
+		"CLAP_TRIGGER_IS_AUTOMATABLE_PER_CHANNEL": 4,
+		"CLAP_TRIGGER_IS_AUTOMATABLE_PER_PORT": 8,
+		"CLAP_EVENT_TRIGGER": 0,
+		"CLAP_TRIGGER_RESCAN_INFO": 1,
+		"CLAP_TRIGGER_RESCAN_ALL": 2,
+		"CLAP_TRIGGER_CLEAR_ALL": 1,
+		"CLAP_TRIGGER_CLEAR_AUTOMATIONS": 2
+	},
+	"strings": {
+		"CLAP_PLUGIN_FEATURE_INSTRUMENT": "instrument",
+		"CLAP_PLUGIN_FEATURE_AUDIO_EFFECT": "audio-effect",
+		"CLAP_PLUGIN_FEATURE_NOTE_EFFECT": "note-effect",
+		"CLAP_PLUGIN_FEATURE_NOTE_DETECTOR": "note-detector",
+		"CLAP_PLUGIN_FEATURE_ANALYZER": "analyzer",
+		"CLAP_PLUGIN_FEATURE_SYNTHESIZER": "synthesizer",
+		"CLAP_PLUGIN_FEATURE_SAMPLER": "sampler",
+		"CLAP_PLUGIN_FEATURE_DRUM": "drum",
+		"CLAP_PLUGIN_FEATURE_DRUM_MACHINE": "drum-machine",
+		"CLAP_PLUGIN_FEATURE_FILTER": "filter",
+		"CLAP_PLUGIN_FEATURE_PHASER": "phaser",
+		"CLAP_PLUGIN_FEATURE_EQUALIZER": "equalizer",
+		"CLAP_PLUGIN_FEATURE_DEESSER": "de-esser",
+		"CLAP_PLUGIN_FEATURE_PHASE_VOCODER": "phase-vocoder",
+		"CLAP_PLUGIN_FEATURE_GRANULAR": "granular",
+		"CLAP_PLUGIN_FEATURE_FREQUENCY_SHIFTER": "frequency-shifter",
+		"CLAP_PLUGIN_FEATURE_PITCH_SHIFTER": "pitch-shifter",
+		"CLAP_PLUGIN_FEATURE_DISTORTION": "distortion",
+		"CLAP_PLUGIN_FEATURE_TRANSIENT_SHAPER": "transient-shaper",
+		"CLAP_PLUGIN_FEATURE_COMPRESSOR": "compressor",
+		"CLAP_PLUGIN_FEATURE_EXPANDER": "expander",
+		"CLAP_PLUGIN_FEATURE_GATE": "gate",
+		"CLAP_PLUGIN_FEATURE_LIMITER": "limiter",
+		"CLAP_PLUGIN_FEATURE_FLANGER": "flanger",
+		"CLAP_PLUGIN_FEATURE_CHORUS": "chorus",
+		"CLAP_PLUGIN_FEATURE_DELAY": "delay",
+		"CLAP_PLUGIN_FEATURE_REVERB": "reverb",
+		"CLAP_PLUGIN_FEATURE_TREMOLO": "tremolo",
+		"CLAP_PLUGIN_FEATURE_GLITCH": "glitch",
+		"CLAP_PLUGIN_FEATURE_UTILITY": "utility",
+		"CLAP_PLUGIN_FEATURE_PITCH_CORRECTION": "pitch-correction",
+		"CLAP_PLUGIN_FEATURE_RESTORATION": "restoration",
+		"CLAP_PLUGIN_FEATURE_MULTI_EFFECTS": "multi-effects",
+		"CLAP_PLUGIN_FEATURE_MIXING": "mixing",
+		"CLAP_PLUGIN_FEATURE_MASTERING": "mastering",
+		"CLAP_PLUGIN_FEATURE_MONO": "mono",
+		"CLAP_PLUGIN_FEATURE_STEREO": "stereo",
+		"CLAP_PLUGIN_FEATURE_SURROUND": "surround",
+		"CLAP_PLUGIN_FEATURE_AMBISONIC": "ambisonic",
+		"CLAP_PLUGIN_FACTORY_ID": "clap.plugin-factory",
+		"CLAP_PRESET_DISCOVERY_FACTORY_ID": "clap.preset-discovery-factory/2",
+		"CLAP_PRESET_DISCOVERY_FACTORY_ID_COMPAT": "clap.preset-discovery-factory/draft-2",
+		"CLAP_EXT_AMBISONIC": "clap.ambisonic/3",
+		"CLAP_EXT_AMBISONIC_COMPAT": "clap.ambisonic.draft/3",
+		"CLAP_PORT_AMBISONIC": "ambisonic",
+		"CLAP_EXT_AUDIO_PORTS_ACTIVATION": "clap.audio-ports-activation/2",
+		"CLAP_EXT_AUDIO_PORTS_ACTIVATION_COMPAT": "clap.audio-ports-activation/draft-2",
+		"CLAP_EXT_AUDIO_PORTS": "clap.audio-ports",
+		"CLAP_PORT_MONO": "mono",
+		"CLAP_PORT_STEREO": "stereo",
+		"CLAP_EXT_AUDIO_PORTS_CONFIG": "clap.audio-ports-config",
+		"CLAP_EXT_AUDIO_PORTS_CONFIG_INFO": "clap.audio-ports-config-info/1",
+		"CLAP_EXT_AUDIO_PORTS_CONFIG_INFO_COMPAT": "clap.audio-ports-config-info/draft-0",
+		"CLAP_EXT_CONFIGURABLE_AUDIO_PORTS": "clap.configurable-audio-ports/1",
+		"CLAP_EXT_CONFIGURABLE_AUDIO_PORTS_COMPAT": "clap.configurable-audio-ports.draft1",
+		"CLAP_EXT_CONTEXT_MENU": "clap.context-menu/1",
+		"CLAP_EXT_CONTEXT_MENU_COMPAT": "clap.context-menu.draft/0",
+		"CLAP_EXT_EVENT_REGISTRY": "clap.event-registry",
+		"CLAP_EXT_GUI": "clap.gui",
+		"CLAP_WINDOW_API_WIN32": "win32",
+		"CLAP_WINDOW_API_COCOA": "cocoa",
+		"CLAP_WINDOW_API_X11": "x11",
+		"CLAP_WINDOW_API_WAYLAND": "wayland",
+		"CLAP_EXT_LATENCY": "clap.latency",
+		"CLAP_EXT_LOG": "clap.log",
+		"CLAP_EXT_NOTE_NAME": "clap.note-name",
+		"CLAP_EXT_NOTE_PORTS": "clap.note-ports",
+		"CLAP_EXT_PARAMS": "clap.params",
+		"CLAP_EXT_PARAM_INDICATION": "clap.param-indication/4",
+		"CLAP_EXT_PARAM_INDICATION_COMPAT": "clap.param-indication.draft/4",
+		"CLAP_EXT_POSIX_FD_SUPPORT": "clap.posix-fd-support",
+		"CLAP_EXT_PRESET_LOAD": "clap.preset-load/2",
+		"CLAP_EXT_PRESET_LOAD_COMPAT": "clap.preset-load.draft/2",
+		"CLAP_EXT_REMOTE_CONTROLS": "clap.remote-controls/2",
+		"CLAP_EXT_REMOTE_CONTROLS_COMPAT": "clap.remote-controls.draft/2",
+		"CLAP_EXT_RENDER": "clap.render",
+		"CLAP_EXT_STATE_CONTEXT": "clap.state-context/2",
+		"CLAP_EXT_STATE": "clap.state",
+		"CLAP_EXT_SURROUND": "clap.surround/4",
+		"CLAP_EXT_SURROUND_COMPAT": "clap.surround.draft/4",
+		"CLAP_PORT_SURROUND": "surround",
+		"CLAP_EXT_TAIL": "clap.tail",
+		"CLAP_EXT_THREAD_CHECK": "clap.thread-check",
+		"CLAP_EXT_THREAD_POOL": "clap.thread-pool",
+		"CLAP_EXT_TIMER_SUPPORT": "clap.timer-support",
+		"CLAP_EXT_TRACK_INFO": "clap.track-info/1",
+		"CLAP_EXT_TRACK_INFO_COMPAT": "clap.track-info.draft/1",
+		"CLAP_EXT_VOICE_INFO": "clap.voice-info",
+		"CLAP_PLUGIN_INVALIDATION_FACTORY_ID": "clap.plugin-invalidation-factory/1",
+		"CLAP_PLUGIN_STATE_CONVERTER_FACTORY_ID": "clap.plugin-state-converter-factory/1",
+		"CLAP_EXT_EXTENSIBLE_AUDIO_PORTS": "clap.extensible-audio-ports/1",
+		"CLAP_EXT_GAIN_ADJUSTMENT_METERING": "clap.gain-adjustment-metering/0",
+		"CLAP_EXT_MINI_CURVE_DISPLAY": "clap.mini-curve-display/3",
+		"CLAP_EXT_PROJECT_LOCATION": "clap.project-location/2",
+		"CLAP_EXT_RESOURCE_DIRECTORY": "clap.resource-directory/1",
+		"CLAP_EXT_SCRATCH_MEMORY": "clap.scratch-memory/1",
+		"CLAP_EXT_TRANSPORT_CONTROL": "clap.transport-control/1",
+		"CLAP_EXT_TRIGGERS": "clap.triggers/1",
+		"CLAP_EXT_TUNING": "clap.tuning/2",
+		"CLAP_EXT_UNDO": "clap.undo/4",
+		"CLAP_EXT_UNDO_CONTEXT": "clap.undo_context/4",
+		"CLAP_EXT_UNDO_DELTA": "clap.undo_delta/4",
+		"CLAP_EXT_WEBVIEW": "clap.webview/3",
+		"CLAP_WINDOW_API_WEBVIEW": "webview"
+	},
+	"types": {
+		"float": {
+			"type": "value",
+			"size": 4,
+			"align": 4,
+			"direct": true
+		},
+		"double": {
+			"type": "value",
+			"size": 8,
+			"align": 8,
+			"direct": true
+		},
+		"bool": {
+			"type": "value",
+			"size": 1,
+			"align": 1,
+			"direct": true
+		},
+		"int8": {
+			"type": "value",
+			"size": 1,
+			"align": 1,
+			"direct": true
+		},
+		"uint8": {
+			"type": "value",
+			"size": 1,
+			"align": 1,
+			"direct": true
+		},
+		"int16": {
+			"type": "value",
+			"size": 2,
+			"align": 2,
+			"direct": true
+		},
+		"uint16": {
+			"type": "value",
+			"size": 2,
+			"align": 2,
+			"direct": true
+		},
+		"int32": {
+			"type": "value",
+			"size": 4,
+			"align": 4,
+			"direct": true
+		},
+		"uint32": {
+			"type": "value",
+			"size": 4,
+			"align": 4,
+			"direct": true
+		},
+		"int64": {
+			"type": "value",
+			"size": 8,
+			"align": 8,
+			"direct": true
+		},
+		"uint64": {
+			"type": "value",
+			"size": 8,
+			"align": 8,
+			"direct": true
+		},
+		"clap_version": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "major",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "minor",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"type": "uint32",
+					"name": "revision",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": true
+		},
+		"clap_plugin_entry": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_version",
+					"name": "clap_version",
+					"size": 12,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"name": "init",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin_path",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "deinit",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [],
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "get_factory",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "void"
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory_id",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				}
+			],
+			"size": 24,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_version",
+					"name": "clap_version",
+					"size": 12,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"name": "host_data",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "name",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "vendor",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"name": "url",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"name": "version",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 28
+				},
+				{
+					"name": "get_extension",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "void"
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 32,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "extension_id",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 32
+				},
+				{
+					"name": "request_restart",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 36,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 36
+				},
+				{
+					"name": "request_process",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 40,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 40
+				},
+				{
+					"name": "request_callback",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 44,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 44
+				}
+			],
+			"size": 48,
+			"align": 1,
+			"direct": false
+		},
+		"clap_event_header": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "size",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "time",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"type": "uint16",
+					"name": "space_id",
+					"size": 2,
+					"align": 2,
+					"offset": 8
+				},
+				{
+					"type": "uint16",
+					"name": "type",
+					"size": 2,
+					"align": 2,
+					"offset": 10
+				},
+				{
+					"type": "uint32",
+					"name": "flags",
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				}
+			],
+			"size": 16,
+			"align": 1,
+			"direct": true
+		},
+		"clap_event_note": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "int32",
+					"name": "note_id",
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"type": "int16",
+					"name": "port_index",
+					"size": 2,
+					"align": 2,
+					"offset": 20
+				},
+				{
+					"type": "int16",
+					"name": "channel",
+					"size": 2,
+					"align": 2,
+					"offset": 22
+				},
+				{
+					"type": "int16",
+					"name": "key",
+					"size": 2,
+					"align": 2,
+					"offset": 24
+				},
+				{
+					"type": "double",
+					"name": "velocity",
+					"size": 8,
+					"align": 8,
+					"offset": 32
+				}
+			],
+			"size": 40,
+			"align": 1,
+			"direct": true
+		},
+		"clap_event_note_expression": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "int32",
+					"name": "expression_id",
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"type": "int32",
+					"name": "note_id",
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"type": "int16",
+					"name": "port_index",
+					"size": 2,
+					"align": 2,
+					"offset": 24
+				},
+				{
+					"type": "int16",
+					"name": "channel",
+					"size": 2,
+					"align": 2,
+					"offset": 26
+				},
+				{
+					"type": "int16",
+					"name": "key",
+					"size": 2,
+					"align": 2,
+					"offset": 28
+				},
+				{
+					"type": "double",
+					"name": "value",
+					"size": 8,
+					"align": 8,
+					"offset": 32
+				}
+			],
+			"size": 40,
+			"align": 1,
+			"direct": true
+		},
+		"clap_event_param_value": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "param_id",
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "cookie",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"type": "int32",
+					"name": "note_id",
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"type": "int16",
+					"name": "port_index",
+					"size": 2,
+					"align": 2,
+					"offset": 28
+				},
+				{
+					"type": "int16",
+					"name": "channel",
+					"size": 2,
+					"align": 2,
+					"offset": 30
+				},
+				{
+					"type": "int16",
+					"name": "key",
+					"size": 2,
+					"align": 2,
+					"offset": 32
+				},
+				{
+					"type": "double",
+					"name": "value",
+					"size": 8,
+					"align": 8,
+					"offset": 40
+				}
+			],
+			"size": 48,
+			"align": 1,
+			"direct": false
+		},
+		"clap_event_param_mod": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "param_id",
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "cookie",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"type": "int32",
+					"name": "note_id",
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"type": "int16",
+					"name": "port_index",
+					"size": 2,
+					"align": 2,
+					"offset": 28
+				},
+				{
+					"type": "int16",
+					"name": "channel",
+					"size": 2,
+					"align": 2,
+					"offset": 30
+				},
+				{
+					"type": "int16",
+					"name": "key",
+					"size": 2,
+					"align": 2,
+					"offset": 32
+				},
+				{
+					"type": "double",
+					"name": "amount",
+					"size": 8,
+					"align": 8,
+					"offset": 40
+				}
+			],
+			"size": 48,
+			"align": 1,
+			"direct": false
+		},
+		"clap_event_param_gesture": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "param_id",
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				}
+			],
+			"size": 20,
+			"align": 1,
+			"direct": true
+		},
+		"clap_event_transport": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "flags",
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"type": "int64",
+					"name": "song_pos_beats",
+					"size": 8,
+					"align": 8,
+					"offset": 24
+				},
+				{
+					"type": "int64",
+					"name": "song_pos_seconds",
+					"size": 8,
+					"align": 8,
+					"offset": 32
+				},
+				{
+					"type": "double",
+					"name": "tempo",
+					"size": 8,
+					"align": 8,
+					"offset": 40
+				},
+				{
+					"type": "double",
+					"name": "tempo_inc",
+					"size": 8,
+					"align": 8,
+					"offset": 48
+				},
+				{
+					"type": "int64",
+					"name": "loop_start_beats",
+					"size": 8,
+					"align": 8,
+					"offset": 56
+				},
+				{
+					"type": "int64",
+					"name": "loop_end_beats",
+					"size": 8,
+					"align": 8,
+					"offset": 64
+				},
+				{
+					"type": "int64",
+					"name": "loop_start_seconds",
+					"size": 8,
+					"align": 8,
+					"offset": 72
+				},
+				{
+					"type": "int64",
+					"name": "loop_end_seconds",
+					"size": 8,
+					"align": 8,
+					"offset": 80
+				},
+				{
+					"type": "int64",
+					"name": "bar_start",
+					"size": 8,
+					"align": 8,
+					"offset": 88
+				},
+				{
+					"type": "int32",
+					"name": "bar_number",
+					"size": 4,
+					"align": 4,
+					"offset": 96
+				},
+				{
+					"type": "uint16",
+					"name": "tsig_num",
+					"size": 2,
+					"align": 2,
+					"offset": 100
+				},
+				{
+					"type": "uint16",
+					"name": "tsig_denom",
+					"size": 2,
+					"align": 2,
+					"offset": 102
+				}
+			],
+			"size": 104,
+			"align": 1,
+			"direct": true
+		},
+		"clap_event_midi": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint16",
+					"name": "port_index",
+					"size": 2,
+					"align": 2,
+					"offset": 16
+				},
+				{
+					"type": "[]",
+					"count": 3,
+					"item": {
+						"type": "uint8",
+						"name": "data[]"
+					},
+					"name": "data",
+					"size": 3,
+					"align": 1,
+					"offset": 18
+				}
+			],
+			"size": 21,
+			"align": 1,
+			"direct": false
+		},
+		"clap_event_midi_sysex": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint16",
+					"name": "port_index",
+					"size": 2,
+					"align": 2,
+					"offset": 16
+				},
+				{
+					"name": "buffer",
+					"type": "*",
+					"to": {
+						"type": "uint8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"type": "uint32",
+					"name": "size",
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				}
+			],
+			"size": 28,
+			"align": 1,
+			"direct": false
+		},
+		"clap_event_midi2": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint16",
+					"name": "port_index",
+					"size": 2,
+					"align": 2,
+					"offset": 16
+				},
+				{
+					"type": "[]",
+					"count": 4,
+					"item": {
+						"type": "uint32",
+						"name": "data[]"
+					},
+					"name": "data",
+					"size": 16,
+					"align": 4,
+					"offset": 20
+				}
+			],
+			"size": 36,
+			"align": 1,
+			"direct": false
+		},
+		"clap_input_events": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "ctx",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "size",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "list",
+							"type": "*",
+							"to": {
+								"type": "clap_input_events",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "clap_event_header",
+							"size": 16,
+							"align": 1
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "list",
+							"type": "*",
+							"to": {
+								"type": "clap_input_events",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_output_events": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "ctx",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "try_push",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "list",
+							"type": "*",
+							"to": {
+								"type": "clap_output_events",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "event",
+							"type": "*",
+							"to": {
+								"type": "clap_event_header",
+								"size": 16,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_audio_buffer": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "data32",
+					"type": "*",
+					"to": {
+						"type": "*",
+						"to": {
+							"type": "float",
+							"size": 4,
+							"align": 4
+						},
+						"toConst": false,
+						"size": 4,
+						"align": 4
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "data64",
+					"type": "*",
+					"to": {
+						"type": "*",
+						"to": {
+							"type": "double",
+							"size": 8,
+							"align": 8
+						},
+						"toConst": false,
+						"size": 4,
+						"align": 4
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"type": "uint32",
+					"name": "channel_count",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"type": "uint32",
+					"name": "latency",
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"type": "uint64",
+					"name": "constant_mask",
+					"size": 8,
+					"align": 8,
+					"offset": 16
+				}
+			],
+			"size": 24,
+			"align": 1,
+			"direct": false
+		},
+		"clap_process": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "int64",
+					"name": "steady_time",
+					"size": 8,
+					"align": 8,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "frames_count",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "transport",
+					"type": "*",
+					"to": {
+						"type": "clap_event_transport",
+						"size": 104,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "audio_inputs",
+					"type": "*",
+					"to": {
+						"type": "clap_audio_buffer",
+						"size": 24,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "audio_outputs",
+					"type": "*",
+					"to": {
+						"type": "clap_audio_buffer",
+						"size": 24,
+						"align": 1
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"type": "uint32",
+					"name": "audio_inputs_count",
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"type": "uint32",
+					"name": "audio_outputs_count",
+					"size": 4,
+					"align": 4,
+					"offset": 28
+				},
+				{
+					"name": "in_events",
+					"type": "*",
+					"to": {
+						"type": "clap_input_events",
+						"size": 12,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 32
+				},
+				{
+					"name": "out_events",
+					"type": "*",
+					"to": {
+						"type": "clap_output_events",
+						"size": 8,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 36
+				}
+			],
+			"size": 40,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_descriptor": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_version",
+					"name": "clap_version",
+					"size": 12,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"name": "id",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "name",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "vendor",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"name": "url",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"name": "manual_url",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 28
+				},
+				{
+					"name": "support_url",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 32
+				},
+				{
+					"name": "version",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 36
+				},
+				{
+					"name": "description",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 40
+				},
+				{
+					"name": "features",
+					"type": "*",
+					"to": {
+						"type": "*",
+						"to": {
+							"type": "int8",
+							"size": 1,
+							"align": 1
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 44
+				}
+			],
+			"size": 48,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "desc",
+					"type": "*",
+					"to": {
+						"type": "clap_plugin_descriptor",
+						"size": 48,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "plugin_data",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "init",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "destroy",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 12,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "activate",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 16,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "double",
+							"name": "sample_rate"
+						},
+						{
+							"type": "uint32",
+							"name": "min_frames_count"
+						},
+						{
+							"type": "uint32",
+							"name": "max_frames_count"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "deactivate",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 20,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"name": "start_processing",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 24,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"name": "stop_processing",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 28,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 28
+				},
+				{
+					"name": "reset",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 32,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 32
+				},
+				{
+					"name": "process",
+					"type": "()",
+					"result": {
+						"type": "int32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 36,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "process",
+							"type": "*",
+							"to": {
+								"type": "clap_process",
+								"size": 40,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 36
+				},
+				{
+					"name": "get_extension",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "void"
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 40,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "id",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 40
+				},
+				{
+					"name": "on_main_thread",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 44,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 44
+				}
+			],
+			"size": 48,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_factory": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get_plugin_count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_factory",
+								"size": 0,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get_plugin_descriptor",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "clap_plugin_descriptor",
+							"size": 48,
+							"align": 1
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_factory",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "create_plugin",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "clap_plugin",
+							"size": 48,
+							"align": 1
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_factory",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "plugin_id",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_universal_plugin_id": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "abi",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "id",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_preset_discovery_metadata_receiver": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "receiver_data",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "on_error",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int32",
+							"name": "os_error"
+						},
+						{
+							"name": "error_message",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "begin_preset",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "name",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "load_key",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "add_plugin_id",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 12,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "plugin_id",
+							"type": "*",
+							"to": {
+								"type": "clap_universal_plugin_id",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "set_soundpack_id",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 16,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "soundpack_id",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "set_flags",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 20,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"name": "add_creator",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 24,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "creator",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"name": "set_description",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 28,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "description",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 28
+				},
+				{
+					"name": "set_timestamps",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 32,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint64",
+							"name": "creation_time"
+						},
+						{
+							"type": "uint64",
+							"name": "modification_time"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 32
+				},
+				{
+					"name": "add_feature",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 36,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "feature",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 36
+				},
+				{
+					"name": "add_extra_info",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 40,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "key",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "value",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 40
+				}
+			],
+			"size": 44,
+			"align": 1,
+			"direct": false
+		},
+		"clap_preset_discovery_filetype": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "name",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "description",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "file_extension",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_preset_discovery_location": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "flags",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "name",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"type": "uint32",
+					"name": "kind",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "location",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				}
+			],
+			"size": 16,
+			"align": 1,
+			"direct": false
+		},
+		"clap_preset_discovery_soundpack": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "flags",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "id",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "name",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "description",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "homepage_url",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "vendor",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"name": "image_path",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"type": "uint64",
+					"name": "release_timestamp",
+					"size": 8,
+					"align": 8,
+					"offset": 32
+				}
+			],
+			"size": 40,
+			"align": 1,
+			"direct": false
+		},
+		"clap_preset_discovery_provider_descriptor": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_version",
+					"name": "clap_version",
+					"size": 12,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"name": "id",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "name",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "vendor",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				}
+			],
+			"size": 24,
+			"align": 1,
+			"direct": false
+		},
+		"clap_preset_discovery_provider": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "desc",
+					"type": "*",
+					"to": {
+						"type": "clap_preset_discovery_provider_descriptor",
+						"size": 24,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "provider_data",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "init",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "provider",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_provider",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "destroy",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "provider",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_provider",
+								"size": 12,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "get_metadata",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "provider",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_provider",
+								"size": 16,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "location_kind"
+						},
+						{
+							"name": "location",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "metadata_receiver",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_metadata_receiver",
+								"size": 44,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "get_extension",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "void"
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "provider",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_provider",
+								"size": 20,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "extension_id",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				}
+			],
+			"size": 24,
+			"align": 1,
+			"direct": false
+		},
+		"clap_preset_discovery_indexer": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_version",
+					"name": "clap_version",
+					"size": 12,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"name": "name",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "vendor",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "url",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"name": "version",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"name": "indexer_data",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 28
+				},
+				{
+					"name": "declare_filetype",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "indexer",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_indexer",
+								"size": 32,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "filetype",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_filetype",
+								"size": 12,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 32
+				},
+				{
+					"name": "declare_location",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "indexer",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_indexer",
+								"size": 36,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "location",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_location",
+								"size": 16,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 36
+				},
+				{
+					"name": "declare_soundpack",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "indexer",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_indexer",
+								"size": 40,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "soundpack",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_soundpack",
+								"size": 40,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 40
+				},
+				{
+					"name": "get_extension",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "void"
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "indexer",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_indexer",
+								"size": 44,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "extension_id",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 44
+				}
+			],
+			"size": 48,
+			"align": 1,
+			"direct": false
+		},
+		"clap_preset_discovery_factory": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_factory",
+								"size": 0,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get_descriptor",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "clap_preset_discovery_provider_descriptor",
+							"size": 24,
+							"align": 1
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_factory",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "create",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "clap_preset_discovery_provider",
+							"size": 24,
+							"align": 1
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_factory",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "indexer",
+							"type": "*",
+							"to": {
+								"type": "clap_preset_discovery_indexer",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "provider_id",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_ambisonic_config": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "ordering",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "normalization",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": true
+		},
+		"clap_plugin_ambisonic": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "is_config_supported",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "config",
+							"type": "*",
+							"to": {
+								"type": "clap_ambisonic_config",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get_config",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_input"
+						},
+						{
+							"type": "uint32",
+							"name": "port_index"
+						},
+						{
+							"name": "config",
+							"type": "*",
+							"to": {
+								"type": "clap_ambisonic_config",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_ambisonic": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_audio_ports_activation": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "can_activate_while_processing",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "set_active",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_input"
+						},
+						{
+							"type": "uint32",
+							"name": "port_index"
+						},
+						{
+							"type": "bool",
+							"name": "is_active"
+						},
+						{
+							"type": "uint32",
+							"name": "sample_size"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_audio_port_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "id",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "name[]"
+					},
+					"name": "name",
+					"size": 256,
+					"align": 1,
+					"offset": 4
+				},
+				{
+					"type": "uint32",
+					"name": "flags",
+					"size": 4,
+					"align": 4,
+					"offset": 260
+				},
+				{
+					"type": "uint32",
+					"name": "channel_count",
+					"size": 4,
+					"align": 4,
+					"offset": 264
+				},
+				{
+					"name": "port_type",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 268
+				},
+				{
+					"type": "uint32",
+					"name": "in_place_pair",
+					"size": 4,
+					"align": 4,
+					"offset": 272
+				}
+			],
+			"size": 276,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_audio_ports": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_input"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						},
+						{
+							"type": "bool",
+							"name": "is_input"
+						},
+						{
+							"name": "info",
+							"type": "*",
+							"to": {
+								"type": "clap_audio_port_info",
+								"size": 276,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_audio_ports": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "is_rescan_flag_supported",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "flag"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "rescan",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_audio_ports_config": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "id",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "name[]"
+					},
+					"name": "name",
+					"size": 256,
+					"align": 1,
+					"offset": 4
+				},
+				{
+					"type": "uint32",
+					"name": "input_port_count",
+					"size": 4,
+					"align": 4,
+					"offset": 260
+				},
+				{
+					"type": "uint32",
+					"name": "output_port_count",
+					"size": 4,
+					"align": 4,
+					"offset": 264
+				},
+				{
+					"type": "bool",
+					"name": "has_main_input",
+					"size": 1,
+					"align": 1,
+					"offset": 268
+				},
+				{
+					"type": "uint32",
+					"name": "main_input_channel_count",
+					"size": 4,
+					"align": 4,
+					"offset": 272
+				},
+				{
+					"name": "main_input_port_type",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 276
+				},
+				{
+					"type": "bool",
+					"name": "has_main_output",
+					"size": 1,
+					"align": 1,
+					"offset": 280
+				},
+				{
+					"type": "uint32",
+					"name": "main_output_channel_count",
+					"size": 4,
+					"align": 4,
+					"offset": 284
+				},
+				{
+					"name": "main_output_port_type",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 288
+				}
+			],
+			"size": 292,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_audio_ports_config": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						},
+						{
+							"name": "config",
+							"type": "*",
+							"to": {
+								"type": "clap_audio_ports_config",
+								"size": 292,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "select",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "config_id"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_audio_ports_config_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "current_config",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "config_id"
+						},
+						{
+							"type": "uint32",
+							"name": "port_index"
+						},
+						{
+							"type": "bool",
+							"name": "is_input"
+						},
+						{
+							"name": "info",
+							"type": "*",
+							"to": {
+								"type": "clap_audio_port_info",
+								"size": 276,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_audio_ports_config": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "rescan",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_audio_port_configuration_request": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "bool",
+					"name": "is_input",
+					"size": 1,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "port_index",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"type": "uint32",
+					"name": "channel_count",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "port_type",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "port_details",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				}
+			],
+			"size": 20,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_configurable_audio_ports": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "can_apply_configuration",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "requests",
+							"type": "*",
+							"to": {
+								"type": "clap_audio_port_configuration_request",
+								"size": 20,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "request_count"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "apply_configuration",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "requests",
+							"type": "*",
+							"to": {
+								"type": "clap_audio_port_configuration_request",
+								"size": 20,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "request_count"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_context_menu_target": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "kind",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "id",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": true
+		},
+		"clap_context_menu_entry": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "label",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "bool",
+					"name": "is_enabled",
+					"size": 1,
+					"align": 1,
+					"offset": 4
+				},
+				{
+					"type": "uint32",
+					"name": "action_id",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_context_menu_check_entry": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "label",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "bool",
+					"name": "is_enabled",
+					"size": 1,
+					"align": 1,
+					"offset": 4
+				},
+				{
+					"type": "bool",
+					"name": "is_checked",
+					"size": 1,
+					"align": 1,
+					"offset": 5
+				},
+				{
+					"type": "uint32",
+					"name": "action_id",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_context_menu_item_title": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "title",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "bool",
+					"name": "is_enabled",
+					"size": 1,
+					"align": 1,
+					"offset": 4
+				}
+			],
+			"size": 5,
+			"align": 1,
+			"direct": false
+		},
+		"clap_context_menu_submenu": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "label",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "bool",
+					"name": "is_enabled",
+					"size": 1,
+					"align": 1,
+					"offset": 4
+				}
+			],
+			"size": 5,
+			"align": 1,
+			"direct": false
+		},
+		"clap_context_menu_builder": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "ctx",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "add_item",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "builder",
+							"type": "*",
+							"to": {
+								"type": "clap_context_menu_builder",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "item_kind"
+						},
+						{
+							"name": "item_data",
+							"type": "*",
+							"to": {
+								"type": "void"
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "supports",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "builder",
+							"type": "*",
+							"to": {
+								"type": "clap_context_menu_builder",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "item_kind"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_context_menu": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "populate",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "target",
+							"type": "*",
+							"to": {
+								"type": "clap_context_menu_target",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "builder",
+							"type": "*",
+							"to": {
+								"type": "clap_context_menu_builder",
+								"size": 12,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "perform",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "target",
+							"type": "*",
+							"to": {
+								"type": "clap_context_menu_target",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "action_id"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_context_menu": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "populate",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "target",
+							"type": "*",
+							"to": {
+								"type": "clap_context_menu_target",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "builder",
+							"type": "*",
+							"to": {
+								"type": "clap_context_menu_builder",
+								"size": 12,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "perform",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "target",
+							"type": "*",
+							"to": {
+								"type": "clap_context_menu_target",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "action_id"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "can_popup",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "popup",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "target",
+							"type": "*",
+							"to": {
+								"type": "clap_context_menu_target",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int32",
+							"name": "screen_index"
+						},
+						{
+							"type": "int32",
+							"name": "x"
+						},
+						{
+							"type": "int32",
+							"name": "y"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				}
+			],
+			"size": 16,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_event_registry": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "query",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "space_name",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "space_id",
+							"type": "*",
+							"to": {
+								"type": "uint16",
+								"size": 2,
+								"align": 2
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_window": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "api",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "ptr",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_gui_resize_hints": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "bool",
+					"name": "can_resize_horizontally",
+					"size": 1,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "bool",
+					"name": "can_resize_vertically",
+					"size": 1,
+					"align": 1,
+					"offset": 1
+				},
+				{
+					"type": "bool",
+					"name": "preserve_aspect_ratio",
+					"size": 1,
+					"align": 1,
+					"offset": 2
+				},
+				{
+					"type": "uint32",
+					"name": "aspect_ratio_width",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"type": "uint32",
+					"name": "aspect_ratio_height",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": true
+		},
+		"clap_plugin_gui": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "is_api_supported",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "api",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_floating"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get_preferred_api",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "api",
+							"type": "*",
+							"to": {
+								"type": "*",
+								"to": {
+									"type": "int8",
+									"size": 1,
+									"align": 1
+								},
+								"toConst": true,
+								"size": 4,
+								"align": 4
+							},
+							"toConst": false
+						},
+						{
+							"name": "is_floating",
+							"type": "*",
+							"to": {
+								"type": "bool",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "create",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "api",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_floating"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "destroy",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "set_scale",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "double",
+							"name": "scale"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "get_size",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "width",
+							"type": "*",
+							"to": {
+								"type": "uint32",
+								"size": 4,
+								"align": 4
+							},
+							"toConst": false
+						},
+						{
+							"name": "height",
+							"type": "*",
+							"to": {
+								"type": "uint32",
+								"size": 4,
+								"align": 4
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"name": "can_resize",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"name": "get_resize_hints",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "hints",
+							"type": "*",
+							"to": {
+								"type": "clap_gui_resize_hints",
+								"size": 12,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 28
+				},
+				{
+					"name": "adjust_size",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "width",
+							"type": "*",
+							"to": {
+								"type": "uint32",
+								"size": 4,
+								"align": 4
+							},
+							"toConst": false
+						},
+						{
+							"name": "height",
+							"type": "*",
+							"to": {
+								"type": "uint32",
+								"size": 4,
+								"align": 4
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 32
+				},
+				{
+					"name": "set_size",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "width"
+						},
+						{
+							"type": "uint32",
+							"name": "height"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 36
+				},
+				{
+					"name": "set_parent",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "window",
+							"type": "*",
+							"to": {
+								"type": "clap_window",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 40
+				},
+				{
+					"name": "set_transient",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "window",
+							"type": "*",
+							"to": {
+								"type": "clap_window",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 44
+				},
+				{
+					"name": "suggest_title",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "title",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 48
+				},
+				{
+					"name": "show",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 52
+				},
+				{
+					"name": "hide",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 56
+				}
+			],
+			"size": 60,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_gui": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "resize_hints_changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "request_resize",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "width"
+						},
+						{
+							"type": "uint32",
+							"name": "height"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "request_show",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "request_hide",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "closed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "was_destroyed"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				}
+			],
+			"size": 20,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_latency": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_latency": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_log": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "log",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int32",
+							"name": "severity"
+						},
+						{
+							"name": "msg",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_note_name": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "name[]"
+					},
+					"name": "name",
+					"size": 256,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "int16",
+					"name": "port",
+					"size": 2,
+					"align": 2,
+					"offset": 256
+				},
+				{
+					"type": "int16",
+					"name": "key",
+					"size": 2,
+					"align": 2,
+					"offset": 258
+				},
+				{
+					"type": "int16",
+					"name": "channel",
+					"size": 2,
+					"align": 2,
+					"offset": 260
+				}
+			],
+			"size": 262,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_note_name": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						},
+						{
+							"name": "note_name",
+							"type": "*",
+							"to": {
+								"type": "clap_note_name",
+								"size": 262,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_note_name": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_note_port_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "id",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "supported_dialects",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"type": "uint32",
+					"name": "preferred_dialect",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "name[]"
+					},
+					"name": "name",
+					"size": 256,
+					"align": 1,
+					"offset": 12
+				}
+			],
+			"size": 268,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_note_ports": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_input"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						},
+						{
+							"type": "bool",
+							"name": "is_input"
+						},
+						{
+							"name": "info",
+							"type": "*",
+							"to": {
+								"type": "clap_note_port_info",
+								"size": 268,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_note_ports": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "supported_dialects",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "rescan",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_param_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "id",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "flags",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "cookie",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "name[]"
+					},
+					"name": "name",
+					"size": 256,
+					"align": 1,
+					"offset": 12
+				},
+				{
+					"type": "[]",
+					"count": 1024,
+					"item": {
+						"type": "int8",
+						"name": "module[]"
+					},
+					"name": "module",
+					"size": 1024,
+					"align": 1,
+					"offset": 268
+				},
+				{
+					"type": "double",
+					"name": "min_value",
+					"size": 8,
+					"align": 8,
+					"offset": 1296
+				},
+				{
+					"type": "double",
+					"name": "max_value",
+					"size": 8,
+					"align": 8,
+					"offset": 1304
+				},
+				{
+					"type": "double",
+					"name": "default_value",
+					"size": 8,
+					"align": 8,
+					"offset": 1312
+				}
+			],
+			"size": 1320,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_params": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get_info",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "param_index"
+						},
+						{
+							"name": "param_info",
+							"type": "*",
+							"to": {
+								"type": "clap_param_info",
+								"size": 1320,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "get_value",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "param_id"
+						},
+						{
+							"name": "out_value",
+							"type": "*",
+							"to": {
+								"type": "double",
+								"size": 8,
+								"align": 8
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "value_to_text",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "param_id"
+						},
+						{
+							"type": "double",
+							"name": "value"
+						},
+						{
+							"name": "out_buffer",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint32",
+							"name": "out_buffer_capacity"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "text_to_value",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "param_id"
+						},
+						{
+							"name": "param_value_text",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "out_value",
+							"type": "*",
+							"to": {
+								"type": "double",
+								"size": 8,
+								"align": 8
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "flush",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "in",
+							"type": "*",
+							"to": {
+								"type": "clap_input_events",
+								"size": 12,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "out",
+							"type": "*",
+							"to": {
+								"type": "clap_output_events",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				}
+			],
+			"size": 24,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_params": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "rescan",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "clear",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "param_id"
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "request_flush",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_color": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint8",
+					"name": "alpha",
+					"size": 1,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint8",
+					"name": "red",
+					"size": 1,
+					"align": 1,
+					"offset": 1
+				},
+				{
+					"type": "uint8",
+					"name": "green",
+					"size": 1,
+					"align": 1,
+					"offset": 2
+				},
+				{
+					"type": "uint8",
+					"name": "blue",
+					"size": 1,
+					"align": 1,
+					"offset": 3
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": true
+		},
+		"clap_plugin_param_indication": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "set_mapping",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "param_id"
+						},
+						{
+							"type": "bool",
+							"name": "has_mapping"
+						},
+						{
+							"name": "color",
+							"type": "*",
+							"to": {
+								"type": "clap_color",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "label",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "description",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "set_automation",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "param_id"
+						},
+						{
+							"type": "uint32",
+							"name": "automation_state"
+						},
+						{
+							"name": "color",
+							"type": "*",
+							"to": {
+								"type": "clap_color",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_posix_fd_support": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "on_fd",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int32",
+							"name": "fd"
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_posix_fd_support": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "register_fd",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int32",
+							"name": "fd"
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "modify_fd",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int32",
+							"name": "fd"
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "unregister_fd",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int32",
+							"name": "fd"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_preset_load": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "from_location",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "location_kind"
+						},
+						{
+							"name": "location",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "load_key",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_preset_load": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "on_error",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "location_kind"
+						},
+						{
+							"name": "location",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "load_key",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int32",
+							"name": "os_error"
+						},
+						{
+							"name": "msg",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "loaded",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "location_kind"
+						},
+						{
+							"name": "location",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "load_key",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_remote_controls_page": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "section_name[]"
+					},
+					"name": "section_name",
+					"size": 256,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "page_id",
+					"size": 4,
+					"align": 4,
+					"offset": 256
+				},
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "page_name[]"
+					},
+					"name": "page_name",
+					"size": 256,
+					"align": 1,
+					"offset": 260
+				},
+				{
+					"type": "[]",
+					"count": 8,
+					"item": {
+						"type": "uint32",
+						"name": "param_ids[]"
+					},
+					"name": "param_ids",
+					"size": 32,
+					"align": 4,
+					"offset": 516
+				},
+				{
+					"type": "bool",
+					"name": "is_for_preset",
+					"size": 1,
+					"align": 1,
+					"offset": 548
+				}
+			],
+			"size": 549,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_remote_controls": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "page_index"
+						},
+						{
+							"name": "page",
+							"type": "*",
+							"to": {
+								"type": "clap_remote_controls_page",
+								"size": 549,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_remote_controls": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "suggest_page",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "page_id"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_render": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "has_hard_realtime_requirement",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "set",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int32",
+							"name": "mode"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_istream": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "ctx",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "read",
+					"type": "()",
+					"result": {
+						"type": "int64",
+						"name": "result",
+						"size": 8,
+						"align": 8
+					},
+					"args": [
+						{
+							"name": "stream",
+							"type": "*",
+							"to": {
+								"type": "clap_istream",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "buffer",
+							"type": "*",
+							"to": {
+								"type": "void"
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint64",
+							"name": "size"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_ostream": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "ctx",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "write",
+					"type": "()",
+					"result": {
+						"type": "int64",
+						"name": "result",
+						"size": 8,
+						"align": 8
+					},
+					"args": [
+						{
+							"name": "stream",
+							"type": "*",
+							"to": {
+								"type": "clap_ostream",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "buffer",
+							"type": "*",
+							"to": {
+								"type": "void"
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint64",
+							"name": "size"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_state_context": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "save",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "stream",
+							"type": "*",
+							"to": {
+								"type": "clap_ostream",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "context_type"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "load",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "stream",
+							"type": "*",
+							"to": {
+								"type": "clap_istream",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "context_type"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_state": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "save",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "stream",
+							"type": "*",
+							"to": {
+								"type": "clap_ostream",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "load",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "stream",
+							"type": "*",
+							"to": {
+								"type": "clap_istream",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_state": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "mark_dirty",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_surround": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "is_channel_mask_supported",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint64",
+							"name": "channel_mask"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get_channel_map",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_input"
+						},
+						{
+							"type": "uint32",
+							"name": "port_index"
+						},
+						{
+							"name": "channel_map",
+							"type": "*",
+							"to": {
+								"type": "uint8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint32",
+							"name": "channel_map_capacity"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_surround": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_tail": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_tail": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_thread_check": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "is_main_thread",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "is_audio_thread",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_thread_pool": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "exec",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "task_index"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_thread_pool": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "request_exec",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "num_tasks"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_timer_support": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "on_timer",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "timer_id"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_timer_support": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "register_timer",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "period_ms"
+						},
+						{
+							"name": "timer_id",
+							"type": "*",
+							"to": {
+								"type": "uint32",
+								"size": 4,
+								"align": 4
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "unregister_timer",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "timer_id"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_track_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint64",
+					"name": "flags",
+					"size": 8,
+					"align": 8,
+					"offset": 0
+				},
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "name[]"
+					},
+					"name": "name",
+					"size": 256,
+					"align": 1,
+					"offset": 8
+				},
+				{
+					"type": "clap_color",
+					"name": "color",
+					"size": 4,
+					"align": 1,
+					"offset": 264
+				},
+				{
+					"type": "int32",
+					"name": "audio_channel_count",
+					"size": 4,
+					"align": 4,
+					"offset": 268
+				},
+				{
+					"name": "audio_port_type",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 272
+				}
+			],
+			"size": 276,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_track_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_track_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "info",
+							"type": "*",
+							"to": {
+								"type": "clap_track_info",
+								"size": 276,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_voice_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "voice_count",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "voice_capacity",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"type": "uint64",
+					"name": "flags",
+					"size": 8,
+					"align": 8,
+					"offset": 8
+				}
+			],
+			"size": 16,
+			"align": 1,
+			"direct": true
+		},
+		"clap_plugin_voice_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "info",
+							"type": "*",
+							"to": {
+								"type": "clap_voice_info",
+								"size": 16,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_voice_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_invalidation_source": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "directory",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "filename_glob",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"type": "bool",
+					"name": "recursive_scan",
+					"size": 1,
+					"align": 1,
+					"offset": 8
+				}
+			],
+			"size": 9,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_invalidation_factory": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_invalidation_factory",
+								"size": 0,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "clap_plugin_invalidation_source",
+							"size": 9,
+							"align": 1
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_invalidation_factory",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "refresh",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_invalidation_factory",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_state_converter_descriptor": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_version",
+					"name": "clap_version",
+					"size": 12,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "clap_universal_plugin_id",
+					"name": "src_plugin_id",
+					"size": 8,
+					"align": 1,
+					"offset": 12
+				},
+				{
+					"type": "clap_universal_plugin_id",
+					"name": "dst_plugin_id",
+					"size": 8,
+					"align": 1,
+					"offset": 20
+				},
+				{
+					"name": "id",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 28
+				},
+				{
+					"name": "name",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 32
+				},
+				{
+					"name": "vendor",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 36
+				},
+				{
+					"name": "version",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 40
+				},
+				{
+					"name": "description",
+					"type": "*",
+					"to": {
+						"type": "int8",
+						"size": 1,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 44
+				}
+			],
+			"size": 48,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_state_converter": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "desc",
+					"type": "*",
+					"to": {
+						"type": "clap_plugin_state_converter_descriptor",
+						"size": 48,
+						"align": 1
+					},
+					"toConst": true,
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "converter_data",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "destroy",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "converter",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_state_converter",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "convert_state",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "converter",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_state_converter",
+								"size": 12,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"name": "src",
+							"type": "*",
+							"to": {
+								"type": "clap_istream",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "dst",
+							"type": "*",
+							"to": {
+								"type": "clap_ostream",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "error_buffer",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint32",
+							"name": "error_buffer_size"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "convert_normalized_value",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "converter",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_state_converter",
+								"size": 16,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint32",
+							"name": "src_param_id"
+						},
+						{
+							"type": "double",
+							"name": "src_normalized_value"
+						},
+						{
+							"name": "dst_param_id",
+							"type": "*",
+							"to": {
+								"type": "uint32",
+								"size": 4,
+								"align": 4
+							},
+							"toConst": false
+						},
+						{
+							"name": "dst_normalized_value",
+							"type": "*",
+							"to": {
+								"type": "double",
+								"size": 8,
+								"align": 8
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "convert_plain_value",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "converter",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_state_converter",
+								"size": 20,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint32",
+							"name": "src_param_id"
+						},
+						{
+							"type": "double",
+							"name": "src_plain_value"
+						},
+						{
+							"name": "dst_param_id",
+							"type": "*",
+							"to": {
+								"type": "uint32",
+								"size": 4,
+								"align": 4
+							},
+							"toConst": false
+						},
+						{
+							"name": "dst_plain_value",
+							"type": "*",
+							"to": {
+								"type": "double",
+								"size": 8,
+								"align": 8
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				}
+			],
+			"size": 24,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_state_converter_factory": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_state_converter_factory",
+								"size": 0,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get_descriptor",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "clap_plugin_state_converter_descriptor",
+							"size": 48,
+							"align": 1
+						},
+						"toConst": true,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_state_converter_factory",
+								"size": 4,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "create",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "clap_plugin_state_converter",
+							"size": 24,
+							"align": 1
+						},
+						"toConst": false,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "factory",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin_state_converter_factory",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "converter_id",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_extensible_audio_ports": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "add_port",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_input"
+						},
+						{
+							"type": "uint32",
+							"name": "channel_count"
+						},
+						{
+							"name": "port_type",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "port_details",
+							"type": "*",
+							"to": {
+								"type": "void"
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "remove_port",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_input"
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_gain_adjustment_metering": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get",
+					"type": "()",
+					"result": {
+						"type": "double",
+						"name": "result",
+						"size": 8,
+						"align": 8
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_mini_curve_display_curve_hints": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "double",
+					"name": "x_min",
+					"size": 8,
+					"align": 8,
+					"offset": 0
+				},
+				{
+					"type": "double",
+					"name": "x_max",
+					"size": 8,
+					"align": 8,
+					"offset": 8
+				},
+				{
+					"type": "double",
+					"name": "y_min",
+					"size": 8,
+					"align": 8,
+					"offset": 16
+				},
+				{
+					"type": "double",
+					"name": "y_max",
+					"size": 8,
+					"align": 8,
+					"offset": 24
+				}
+			],
+			"size": 32,
+			"align": 1,
+			"direct": true
+		},
+		"clap_mini_curve_display_curve_data": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "int32",
+					"name": "curve_kind",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "values",
+					"type": "*",
+					"to": {
+						"type": "uint16",
+						"size": 2,
+						"align": 2
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"type": "uint32",
+					"name": "values_count",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_mini_curve_display": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get_curve_count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "render",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "curves",
+							"type": "*",
+							"to": {
+								"type": "clap_mini_curve_display_curve_data",
+								"size": 12,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint32",
+							"name": "curves_size"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "set_observed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_observed"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "get_axis_name",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "curve_index"
+						},
+						{
+							"name": "x_name",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"name": "y_name",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint32",
+							"name": "name_capacity"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				}
+			],
+			"size": 16,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_mini_curve_display": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get_hints",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "kind"
+						},
+						{
+							"name": "hints",
+							"type": "*",
+							"to": {
+								"type": "clap_mini_curve_display_curve_hints",
+								"size": 32,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "set_dynamic",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_dynamic"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_project_location_element": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint64",
+					"name": "flags",
+					"size": 8,
+					"align": 8,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "kind",
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"type": "uint32",
+					"name": "track_kind",
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"type": "uint32",
+					"name": "index",
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"type": "[]",
+					"count": 1024,
+					"item": {
+						"type": "int8",
+						"name": "id[]"
+					},
+					"name": "id",
+					"size": 1024,
+					"align": 1,
+					"offset": 20
+				},
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "name[]"
+					},
+					"name": "name",
+					"size": 256,
+					"align": 1,
+					"offset": 1044
+				},
+				{
+					"type": "clap_color",
+					"name": "color",
+					"size": 4,
+					"align": 1,
+					"offset": 1300
+				}
+			],
+			"size": 1304,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_project_location": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "set",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "path",
+							"type": "*",
+							"to": {
+								"type": "clap_project_location_element",
+								"size": 1304,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "num_elements"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_resource_directory": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "set_directory",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "path",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_shared"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "collect",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "all"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "get_files_count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "get_file_path",
+					"type": "()",
+					"result": {
+						"type": "int32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						},
+						{
+							"name": "path",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint32",
+							"name": "path_size"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				}
+			],
+			"size": 16,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_resource_directory": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "request_directory",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_shared"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "release_directory",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_shared"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_scratch_memory": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "reserve",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "scratch_size_bytes"
+						},
+						{
+							"type": "uint32",
+							"name": "max_concurrency_hint"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "access",
+					"type": "()",
+					"result": {
+						"name": "result",
+						"type": "*",
+						"to": {
+							"type": "void"
+						},
+						"toConst": false,
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_transport_control": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "request_start",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "request_stop",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "request_continue",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "request_pause",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "request_toggle_play",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "request_jump",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int64",
+							"name": "position"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"name": "request_loop_region",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "int64",
+							"name": "start"
+						},
+						{
+							"type": "int64",
+							"name": "duration"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"name": "request_toggle_loop",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 28
+				},
+				{
+					"name": "request_enable_loop",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_enabled"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 32
+				},
+				{
+					"name": "request_record",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_recording"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 36
+				},
+				{
+					"name": "request_toggle_record",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 40
+				}
+			],
+			"size": 44,
+			"align": 1,
+			"direct": false
+		},
+		"clap_event_trigger": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "trigger_id",
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "cookie",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				},
+				{
+					"type": "int32",
+					"name": "note_id",
+					"size": 4,
+					"align": 4,
+					"offset": 24
+				},
+				{
+					"type": "int16",
+					"name": "port_index",
+					"size": 2,
+					"align": 2,
+					"offset": 28
+				},
+				{
+					"type": "int16",
+					"name": "channel",
+					"size": 2,
+					"align": 2,
+					"offset": 30
+				},
+				{
+					"type": "int16",
+					"name": "key",
+					"size": 2,
+					"align": 2,
+					"offset": 32
+				}
+			],
+			"size": 34,
+			"align": 1,
+			"direct": false
+		},
+		"clap_trigger_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "id",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "uint32",
+					"name": "flags",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "cookie",
+					"type": "*",
+					"to": {
+						"type": "void"
+					},
+					"toConst": false,
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "name[]"
+					},
+					"name": "name",
+					"size": 256,
+					"align": 1,
+					"offset": 12
+				},
+				{
+					"type": "[]",
+					"count": 1024,
+					"item": {
+						"type": "int8",
+						"name": "module[]"
+					},
+					"name": "module",
+					"size": 1024,
+					"align": 1,
+					"offset": 268
+				}
+			],
+			"size": 1292,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_triggers": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get_info",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "index"
+						},
+						{
+							"name": "trigger_info",
+							"type": "*",
+							"to": {
+								"type": "clap_trigger_info",
+								"size": 1292,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_triggers": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "rescan",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "clear",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "trigger_id"
+						},
+						{
+							"type": "uint32",
+							"name": "flags"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": false
+		},
+		"clap_event_tuning": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "clap_event_header",
+					"name": "header",
+					"size": 16,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "int16",
+					"name": "port_index",
+					"size": 2,
+					"align": 2,
+					"offset": 16
+				},
+				{
+					"type": "int16",
+					"name": "channel",
+					"size": 2,
+					"align": 2,
+					"offset": 18
+				},
+				{
+					"type": "uint32",
+					"name": "tunning_id",
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				}
+			],
+			"size": 24,
+			"align": 1,
+			"direct": true
+		},
+		"clap_tuning_info": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "uint32",
+					"name": "tuning_id",
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"type": "[]",
+					"count": 256,
+					"item": {
+						"type": "int8",
+						"name": "name[]"
+					},
+					"name": "name",
+					"size": 256,
+					"align": 1,
+					"offset": 4
+				},
+				{
+					"type": "bool",
+					"name": "is_dynamic",
+					"size": 1,
+					"align": 1,
+					"offset": 260
+				}
+			],
+			"size": 261,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_tuning": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "changed",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_tuning": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get_relative",
+					"type": "()",
+					"result": {
+						"type": "double",
+						"name": "result",
+						"size": 8,
+						"align": 8
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "tuning_id"
+						},
+						{
+							"type": "int32",
+							"name": "channel"
+						},
+						{
+							"type": "int32",
+							"name": "key"
+						},
+						{
+							"type": "uint32",
+							"name": "sample_offset"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "should_play",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "tuning_id"
+						},
+						{
+							"type": "int32",
+							"name": "channel"
+						},
+						{
+							"type": "int32",
+							"name": "key"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "get_tuning_count",
+					"type": "()",
+					"result": {
+						"type": "uint32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "get_info",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "tuning_index"
+						},
+						{
+							"name": "info",
+							"type": "*",
+							"to": {
+								"type": "clap_tuning_info",
+								"size": 261,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				}
+			],
+			"size": 16,
+			"align": 1,
+			"direct": false
+		},
+		"clap_undo_delta_properties": {
+			"type": "struct",
+			"fields": [
+				{
+					"type": "bool",
+					"name": "has_delta",
+					"size": 1,
+					"align": 1,
+					"offset": 0
+				},
+				{
+					"type": "bool",
+					"name": "are_deltas_persistent",
+					"size": 1,
+					"align": 1,
+					"offset": 1
+				},
+				{
+					"type": "uint32",
+					"name": "format_version",
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				}
+			],
+			"size": 8,
+			"align": 1,
+			"direct": true
+		},
+		"clap_plugin_undo_delta": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get_delta_properties",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "properties",
+							"type": "*",
+							"to": {
+								"type": "clap_undo_delta_properties",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": false
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "can_use_delta_format_version",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "format_version"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "undo",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "format_version"
+						},
+						{
+							"name": "delta",
+							"type": "*",
+							"to": {
+								"type": "void"
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "delta_size"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "redo",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "format_version"
+						},
+						{
+							"name": "delta",
+							"type": "*",
+							"to": {
+								"type": "void"
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "delta_size"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				}
+			],
+			"size": 16,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_undo_context": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "set_can_undo",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "can_undo"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "set_can_redo",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "can_redo"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "set_undo_name",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "name",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "set_redo_name",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "name",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				}
+			],
+			"size": 16,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_undo": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "begin_change",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "cancel_change",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "change_made",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "name",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "delta",
+							"type": "*",
+							"to": {
+								"type": "void"
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "delta_size"
+						},
+						{
+							"type": "bool",
+							"name": "delta_can_undo"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				},
+				{
+					"name": "request_undo",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 12
+				},
+				{
+					"name": "request_redo",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 16
+				},
+				{
+					"name": "set_wants_context_updates",
+					"type": "()",
+					"result": {
+						"type": "void",
+						"name": "result"
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"type": "bool",
+							"name": "is_subscribed"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 20
+				}
+			],
+			"size": 24,
+			"align": 1,
+			"direct": false
+		},
+		"clap_plugin_webview": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "get_uri",
+					"type": "()",
+					"result": {
+						"type": "int32",
+						"name": "result",
+						"size": 4,
+						"align": 4
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "uri",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint32",
+							"name": "uri_capacity"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				},
+				{
+					"name": "get_resource",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "path",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "mime",
+							"type": "*",
+							"to": {
+								"type": "int8",
+								"size": 1,
+								"align": 1
+							},
+							"toConst": false
+						},
+						{
+							"type": "uint32",
+							"name": "mime_capacity"
+						},
+						{
+							"name": "data_stream",
+							"type": "*",
+							"to": {
+								"type": "clap_ostream",
+								"size": 8,
+								"align": 1
+							},
+							"toConst": true
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 4
+				},
+				{
+					"name": "receive",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "plugin",
+							"type": "*",
+							"to": {
+								"type": "clap_plugin",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "buffer",
+							"type": "*",
+							"to": {
+								"type": "void"
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "size"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 8
+				}
+			],
+			"size": 12,
+			"align": 1,
+			"direct": false
+		},
+		"clap_host_webview": {
+			"type": "struct",
+			"fields": [
+				{
+					"name": "send",
+					"type": "()",
+					"result": {
+						"type": "bool",
+						"name": "result",
+						"size": 1,
+						"align": 1
+					},
+					"args": [
+						{
+							"name": "host",
+							"type": "*",
+							"to": {
+								"type": "clap_host",
+								"size": 48,
+								"align": 1
+							},
+							"toConst": true
+						},
+						{
+							"name": "buffer",
+							"type": "*",
+							"to": {
+								"type": "void"
+							},
+							"toConst": true
+						},
+						{
+							"type": "uint32",
+							"name": "size"
+						}
+					],
+					"size": 4,
+					"align": 4,
+					"offset": 0
+				}
+			],
+			"size": 4,
+			"align": 1,
+			"direct": false
+		}
+	},
+	"aliases": {
+		"char": "int8",
+		"int": "int32",
+		"size": "uint32",
+		"clap_beattime": "int64",
+		"clap_sectime": "int64",
+		"clap_id": "uint32",
+		"clap_note_expression": "int32",
+		"clap_process_status": "int32",
+		"clap_timestamp": "uint64",
+		"clap_context_menu_item_kind": "uint32",
+		"clap_xwnd": "unsigned long",
+		"clap_log_severity": "int32",
+		"clap_param_info_flags": "uint32",
+		"clap_param_rescan_flags": "uint32",
+		"clap_param_clear_flags": "uint32",
+		"clap_posix_fd_flags": "uint32",
+		"clap_plugin_render_mode": "int32",
+		"clap_trigger_info_flags": "uint32",
+		"clap_trigger_rescan_flags": "uint32",
+		"clap_trigger_clear_flags": "uint32"
+	}
+}
