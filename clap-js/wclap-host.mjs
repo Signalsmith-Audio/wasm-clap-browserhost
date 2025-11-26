@@ -60,12 +60,93 @@ class HostRunning {
 	#config;
 	#hostImports = {}
 	#wclapMap = Object.create(null);
-	#wclapInstanceMethods = {};
 	
 	ready;
 	instance;
+	memory;
 
 	constructor(config, imports, skipInit) {
+		// Methods which let the host manage the WCLAP in another module
+		let getEntry = jsIndex => {
+			let entry = this.#wclapMap[jsIndex];
+			if (!entry) throw Error("tried to initialise instance not in the map");
+			return entry;
+		};
+		imports._wclapInstance = {
+			init32: jsIndex => {
+				let entry = getEntry(jsIndex);
+				if (entry.hadInit) throw Error("WCLAP initialised twice");
+				entry.hadInit = true;
+
+				if (typeof entry.instance.exports._initialize === 'function') {
+					entry.instance.exports._initialize();
+				}
+
+				return entry.instance.exports.clap_entry;
+			},
+			call32: (jsIndex, wasmFn, resultPtr, argsPtr, argsCount) => {
+				let entry = getEntry(jsIndex);
+				if (!entry.hadInit) throw Error("WCLAP function called before initialisation");
+
+				let dataView = new DataView(this.memory.buffer);
+				let args = [];
+				for (let i = 0; i < argsCount; ++i) {
+					let ptr = argsPtr + i*16;
+					let type = dataView.getUint8(ptr);
+					if (type == 0) {
+						args.push(dataView.getUint32(ptr + 8, true));
+					} else if (type == 1) {
+						args.push(dataView.getBigUint64(ptr + 8, true));
+					} else if (type == 2) {
+						args.push(dataView.getFloat32(ptr + 8, true));
+					} else if (type == 3) {
+						args.push(dataView.getFloat64(ptr + 8, true));
+					} else {
+						throw Error("invalid argument type");
+					}
+				}
+
+				let result = entry.functionTable.get(wasmFn)(...args);
+				if (typeof result == 'boolean') {
+					dataView.setUint8(resultPtr, 0);
+					dataView.setUint32(resultPtr + 8, result, true);
+				} else if (typeof result == 'number' && (result|0) == result) {
+					dataView.setUint8(resultPtr, 0);
+					dataView.setInt32(resultPtr + 8, result, true);
+				} else if (typeof result == 'number') {
+					dataView.setUint8(resultPtr, 3);
+					dataView.setFloat64(resultPtr + 8, result, true);
+				} else if (result instanceof BigInt && result >= 0n) {
+					dataView.setUint8(resultPtr, 1);
+					dataView.setBigUint64(resultPtr + 8, result, true);
+				} else if (result instanceof BigInt && result < 0n) {
+					dataView.setUint8(resultPtr, 1);
+					dataView.setBigInt64(resultPtr + 8, result, true);
+				} else {
+					console.error("Unknown return type from WCLAP function:", result);
+				}
+			},
+			malloc32: (jsIndex, size) => {
+				let entry = getEntry(jsIndex);
+				let ptr = entry.instance.exports.malloc(size);
+				return ptr;
+			},
+			memcpyToOther32: (jsIndex, wclapP, hostP, size) => {
+				let entry = getEntry(jsIndex);
+				let wclapA = new Uint8Array(entry.memory.buffer).subarray(wclapP, wclapP + size);
+				let hostA = new Uint8Array(this.memory.buffer).subarray(hostP, hostP + size);
+				wclapA.set(hostA);
+				return true;
+			},
+			memcpyFromOther32: (jsIndex, hostP, wclapP, size) => {
+				let entry = getEntry(jsIndex);
+				let hostA = new Uint8Array(this.memory.buffer).subarray(hostP, hostP + size);
+				let wclapA = new Uint8Array(entry.memory.buffer).subarray(wclapP, wclapP + size);
+				hostA.set(wclapA);
+				return true;
+			},
+		};
+
 		this.ready = (async _ => {
 			this.#config = config;
 
@@ -94,18 +175,19 @@ class HostRunning {
 
 			this.instance = await WebAssembly.instantiate(this.#config.module, imports);
 			if (!hostMemory) {
-				hostWasi.setOtherMemory(this.instance.exports.memory);
+				hostMemory = this.instance.exports.memory
+				hostWasi.setOtherMemory(hostMemory);
 			}
+			this.memory = hostMemory;
+
 			if (!skipInit) this.instance.exports._initialize();
-			// This lets the WASI implementation read/write pointers for the host's memory
-			
+
 			return this;
 		})();
 	}
 	
 	async pluginInstance(wclapConfig, wclapImports, existingMapIndex) {
 		if (!wclapImports) wclapImports = {};
-		wclapImports._wclapInstance = this.#wclapInstanceMethods;
 
 		let pluginMemory = null;
 		WebAssembly.Module.imports(wclapConfig.module).forEach(entry => {
@@ -117,7 +199,7 @@ class HostRunning {
 		});
 
 		let alreadyInitialised = (existingMapIndex != null);
-		let pluginWasi = await this.#config.wasiConfig.instance(true); // the host already initialised it
+		let pluginWasi = await this.#config.wasiConfig.instance(true); // the WASI instance is shared with the host
 		Object.assign(wclapImports, pluginWasi.importObj);
 		if (pluginMemory) pluginWasi.setOtherMemory(pluginMemory);
 
@@ -126,24 +208,43 @@ class HostRunning {
 			pluginMemory = wclapInstance.exports.memory;
 			pluginWasi.setOtherMemory(pluginMemory);
 		}
+		let functionTable = null;
+		for (let name in wclapInstance.exports) {
+			if (wclapInstance.exports[name] instanceof WebAssembly.Table) {
+				let table = wclapInstance.exports[name];
+				if (table.length > 0 && typeof table.get(table.length - 1) === 'function') {
+					if (functionTable) throw Error("WCLAP exported multiple function tables");
+					functionTable = table;
+				}
+			}
+		}
+		if (!functionTable) throw Error("WCLAP didn't export a function table");
+
 		if (alreadyInitialised) {
 			this.#wclapMap[existingMapIndex] = {
+				hadInit: false,
 				config: wclapConfig,
 				memory: pluginMemory,
+				functionTable: functionTable,
 				instance: wclapInstance
 			};
 		} else {
-			if (typeof wclapInstance.exports._initialize == 'function') wclapInstance.exports._initialize();
-
 			// Put in the list
 			let index = this.instance.exports._wclapInstanceGetNextIndex();
 			this.#wclapMap[index] = {
+				hadInit: false,
 				config: wclapConfig,
 				memory: pluginMemory,
+				functionTable: functionTable,
 				instance: wclapInstance,
 			};
 			// Defined in `wclap-instance-js.h`
 			let instanceId = this.instance.exports._wclapInstanceCreate(index, false);
+			// Set the path
+			let pathBytes = new TextEncoder('utf-8').encode(wclapConfig.pluginPath);
+			let pathPtr = this.instance.exports._wclapInstanceSetPath(instanceId, pathBytes.length);
+			new Uint8Array(this.memory.buffer).set(pathBytes, pathPtr);
+
 			return instanceId;
 		}
 	}

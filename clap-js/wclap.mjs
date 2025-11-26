@@ -34,7 +34,9 @@ export default async function createWclap(options) {
 	if (!options.files) options.files = {};
 	if (options.module) return new WclapConfig(options);
 
-	if (options.pluginPath) options.pluginPath = "/plugin/" + fnv1aHex(url);
+	if (!options.pluginPath) {
+		options.pluginPath = "/plugin/" + fnv1aHex(options.url);
+	}
 	let wasmPath = `${options.pluginPath}/module.wasm`;
 	let response = await fetch(options.url);
 	if (response.headers.get("Content-Type") == "application/wasm") {

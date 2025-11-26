@@ -1,5 +1,6 @@
 import createHost from "./clap-js/wclap-host.mjs";
 import createWclap from "./clap-js/wclap.mjs";
+import CBOR from "./cbor.mjs";
 
 export default class ClapAudioNode {
 	#m_moduleAddedToAudioContext = Symbol();
@@ -26,12 +27,23 @@ export default class ClapAudioNode {
 		let hostConfig = await this.#m_hostConfigPromise;
 		let pluginConfig = await this.#m_pluginConfigPromise;
 		
-		let host = await hostConfig.instance();
+		let cborResult = null;
+		let host = await hostConfig.instance({
+			env: {
+				cborResult: (ptr, length) => {
+					let bytes = new Uint8Array(host.memory.buffer).slice(ptr, ptr + length);
+					cborResult = CBOR.decode(bytes);
+				}
+			}
+		});
 		let instanceId = await host.pluginInstance(pluginConfig, this.#m_hostImports);
-		
-		debugger;
 
-		return list;
+		host.instance.exports.setInstance(instanceId);
+		host.instance.exports.getInfo(instanceId);
+		let info = cborResult;
+		console.log(info);
+		debugger;
+		return info.plugins;
 	}
 	
 	async createNode(audioContext, pluginId, nodeOptions) {
