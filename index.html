@@ -302,7 +302,7 @@ import _for_debug from "./audioworkletprocessor-clap.mjs";
 				let wasmUrl = queryParams.get('module') || 'plugin/basics-1_0_0.wclap.tar.gz';
 				let module = new ClapAudioNode(wasmUrl);
 				let pluginId = queryParams.get('plugin') || null;
-				module.plugins().then(plugins => {
+				await module.plugins().then(plugins => {
 					let select = $('#select-plugin-id');
 					if (plugins.length <= 1) {
 						select.remove();
