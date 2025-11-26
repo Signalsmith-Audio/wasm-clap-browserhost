@@ -81,7 +81,10 @@ class HostRunning {
 			let hostWasi = await config.wasiConfig.instance(skipInit);
 			Object.assign(imports, hostWasi.importObj);
 			if (!imports.wasi) imports.wasi = {};
-if (!imports.wasi);
+			if (!imports.wasi['thread-spawn']) imports.wasi['thread-spawn'] = function(threadArg) {
+				console.log("Host attempted to start a new thread, but we don't support that");
+				return -1;
+			};
 
 			if (hostMemory) {
 				if (!imports.env) imports.env = {};
@@ -114,11 +117,11 @@ if (!imports.wasi);
 		});
 
 		let alreadyInitialised = (existingMapIndex != null);
-		let pluginWasi = await config.wasiConfig.instance(alreadyInitialised);
-		Object.assign(imports, pluginWasi.importObj);
+		let pluginWasi = await this.#config.wasiConfig.instance(true); // the host already initialised it
+		Object.assign(wclapImports, pluginWasi.importObj);
 		if (pluginMemory) pluginWasi.setOtherMemory(pluginMemory);
 
-		let wclapInstance = await WebAssembly.instantiate(this.#config.module, wclapImports);
+		let wclapInstance = await WebAssembly.instantiate(wclapConfig.module, wclapImports);
 		if (!pluginMemory) {
 			pluginMemory = wclapInstance.exports.memory;
 			pluginWasi.setOtherMemory(pluginMemory);

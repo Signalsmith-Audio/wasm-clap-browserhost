@@ -5,6 +5,8 @@ __attribute__((import_module("env"), import_name("memcpyToOther32")))
 extern void memcpyToOther32(uint32_t destP32, const void *src, uint32_t count);
 __attribute__((import_module("env"), import_name("memcpyFromOther32")))
 extern void memcpyFromOther32(void *dest, uint32_t srcP32, uint32_t count);
+__attribute__((import_module("env"), import_name("procExit")))
+extern void jsProcExit(uint32_t code);
 
 template<class T>
 struct P32 {
@@ -44,6 +46,13 @@ struct filestat {
 	uint64_t aTime;
 	uint64_t mTime;
 	uint64_t cTime;
+};
+
+struct prestat {
+	uint8_t type;
+	struct {
+		uint32_t nameLength;
+	} directory;
 };
 
 struct iovec32 {
@@ -89,7 +98,7 @@ extern "C" {
 	result_t wasi32_snapshot_preview1__clock_res_get(uint32_t clock_id, P32<uint64_t> resolution) {
 		return ENOTCAPABLE;
 	}
-	result_t wasi32_snapshot_preview1__clock_time_get(uint32_t clock_id, P32<uint64_t> resolution, P32<uint64_t> time) {
+	result_t wasi32_snapshot_preview1__clock_time_get(uint32_t clock_id, uint64_t withResolution, P32<uint64_t> time) {
 		return ENOTCAPABLE;
 	}
 	result_t wasi32_snapshot_preview1__environ_sizes_get(P32<size_t> items, P32<size_t> totalSize) {
@@ -130,16 +139,34 @@ extern "C" {
 	result_t wasi32_snapshot_preview1__fd_filestat_set_times(uint32_t fd, uint64_t aTime, uint64_t mTime, uint16_t flags) {
 		return ENOTCAPABLE;
 	}
-	result_t wasi32_snapshot_preview1__fd_pread(uint32_t fd, P32<const iovec32> ioBufferList, uint32_t ioBufferCount, P32<uint32_t> bytesRead) {
+	result_t wasi32_snapshot_preview1__fd_pread(uint32_t fd, P32<const iovec32> ioBufferList, uint32_t ioBufferCount, uint64_t offset, P32<uint32_t> bytesRead) {
+		return ENOTCAPABLE;
+	}
+	result_t wasi32_snapshot_preview1__fd_prestat_get(uint32_t fd, P32<prestat> stat) {
+		return ENOTCAPABLE;
+	}
+	result_t wasi32_snapshot_preview1__fd_prestat_dir_name(uint32_t fd, P32<char> path, uint32_t pathLength) {
+		return ENOTCAPABLE;
+	}
+	result_t wasi32_snapshot_preview1__fd_pwrite(uint32_t fd, P32<const iovec32> ioBufferList, uint32_t ioBufferCount, uint64_t offset, P32<uint32_t> bytesWritten) {
+		return ENOTCAPABLE;
+	}
+	result_t wasi32_snapshot_preview1__fd_read(uint32_t fd, P32<const iovec32> ioBufferList, uint32_t ioBufferCount, P32<uint32_t> bytesRead) {
 		return ENOTCAPABLE;
 	}
 	result_t wasi32_snapshot_preview1__fd_readdir(uint32_t fd, P32<void> buffer, uint32_t bufferSize, uint64_t cookie, P32<uint32_t> bytesUsed) {
 		return ENOTCAPABLE;
 	}
+	result_t wasi32_snapshot_preview1__fd_renumber(uint32_t fdFrom, uint32_t fdTo) {
+		return ENOTCAPABLE;
+	}
+	result_t wasi32_snapshot_preview1__fd_seek(uint32_t fd, int64_t delta, uint8_t whence, P32<uint64_t> newOffset) {
+		return ENOTCAPABLE;
+	}
 	result_t wasi32_snapshot_preview1__fd_sync(uint32_t fd) {
 		return ENOTCAPABLE;
 	}
-	result_t wasi32_snapshot_preview1__fd_tell(uint32_t fd, uint64_t offset) {
+	result_t wasi32_snapshot_preview1__fd_tell(uint32_t fd, P32<uint64_t> offset) {
 		return ENOTCAPABLE;
 	}
 	result_t wasi32_snapshot_preview1__fd_write(uint32_t fd, P32<const iovec32> ioBufferList, uint32_t ioBufferCount, P32<uint32_t> bytesWritten) {
@@ -178,8 +205,8 @@ extern "C" {
 	result_t wasi32_snapshot_preview1__poll_oneoff(P32<subscription32> subs, P32<event32> out, uint32_t subCount, P32<uint32_t> eventCount) {
 		return ENOTCAPABLE;
 	}
-	result_t wasi32_snapshot_preview1__proc_exit(uint32_t code) {
-		return ENOTCAPABLE;
+	void wasi32_snapshot_preview1__proc_exit(uint32_t code) {
+		jsProcExit(code);
 	}
 	result_t wasi32_snapshot_preview1__proc_raise(uint8_t signalType) {
 		return ENOTCAPABLE;

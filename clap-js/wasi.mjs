@@ -20,7 +20,6 @@ function fillWasiFromModuleExports(module, wasiImports) {
 	
 	// Collect WASI methods by matching `{group}__{method}`
 	WebAssembly.Module.exports(module).forEach(item => {
-		console.log(item);
 		let name = item.name;
 		if (/^wasi32_/.test(name) && item.kind == 'function') {
 			let parts = name.split('__');
@@ -62,7 +61,7 @@ class WasiRunning {
 	
 	importObj = {};
 
-	constructor(config, instance, skipInit) {
+	constructor(config, skipInit) {
 		this.#config = config;
 		let memory = config.memory;
 		if (!memory) memory = new WebAssembly.Memory({initial: 8, maximum: 32768, shared: true});
@@ -79,6 +78,10 @@ class WasiRunning {
 					let otherA = new Uint8Array(this.#otherModuleMemory.buffer, otherP, otherP + size);
 					wasiA.set(otherA);
 				},
+				procExit() {
+					debugger;
+					throw new Error("Fatal error - but fully stopping is not supported");
+				}
 			}
 		};
 		// Yes, we recursively pass its own WASI implementation back in, indirectly
