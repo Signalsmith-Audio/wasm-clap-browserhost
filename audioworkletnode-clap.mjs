@@ -1,5 +1,4 @@
-import createHost from "./clap-js/wclap-host.mjs";
-import createWclap from "./clap-js/wclap.mjs";
+import {createHost, createWclap} from "./clap-js/wclap.mjs";
 import CBOR from "./cbor.mjs";
 
 export default class ClapAudioNode {
@@ -27,22 +26,32 @@ export default class ClapAudioNode {
 		let hostConfig = await this.#m_hostConfigPromise;
 		let pluginConfig = await this.#m_pluginConfigPromise;
 		
-		let cborResult = null;
-		let host = await hostConfig.instance({
-			env: {
-				cborResult: (ptr, length) => {
-					let bytes = new Uint8Array(host.memory.buffer).slice(ptr, ptr + length);
-					cborResult = CBOR.decode(bytes);
-				}
-			}
-		});
+		// Decodes the (host-specific) `CborReturn *`
+		let decodeCbor = ptr => {
+			if (!ptr) return null;
+			let buffer = host.memory.buffer;
+			let dataView = new DataView(buffer);
+			let cborPtr = dataView.getUint32(ptr, true);
+			let cborLength = dataView.getUint32(ptr + 4, true);
+
+			// Have to copy because the TextDecoder doesn't like shared buffers
+			let bytes = new Uint8Array(buffer).slice(cborPtr, cborPtr + cborLength);
+			return CBOR.decode(bytes);
+		};
+		let host = await hostConfig.instance({/*custom imports would go here*/});
+		let api = host.instance.exports;
+		
+		// generic
 		let instanceId = await host.pluginInstance(pluginConfig, this.#m_hostImports);
 
-		host.instance.exports.setInstance(instanceId);
-		host.instance.exports.getInfo(instanceId);
-		let info = cborResult;
+		// Specific to this host
+		let wclap = api.makeHosted(instanceId);
+		if (!wclap) throw Error("Failed to load WCLAP");
+
+		let info = decodeCbor(api.getInfo(wclap));
 		console.log(info);
-		debugger;
+
+		api.removeHosted(wclap);
 		return info.plugins;
 	}
 	

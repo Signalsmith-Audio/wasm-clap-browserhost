@@ -1,3 +1,5 @@
+export {createHost} from "./wclap-host.mjs"
+
 import expandTarGz from "./targz.mjs"
 
 function fnv1aHex(string) {
@@ -29,7 +31,7 @@ class WclapConfig {
 	}
 };
 
-export default async function createWclap(options) {
+export async function createWclap(options) {
 	if (typeof options === 'string') options = {url: options};
 	if (!options.files) options.files = {};
 	if (options.module) return new WclapConfig(options);

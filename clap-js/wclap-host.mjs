@@ -1,3 +1,6 @@
+/* This exports `createHost()`, which should work for any Wasm32 host using the `wclap-js-instance` version of `Instance`.*/
+export {createHost};
+
 import createWasi from "./wasi.mjs";
 
 function fillWasiFromInstance(instance, wasiImports) {
@@ -73,6 +76,9 @@ class HostRunning {
 			return entry;
 		};
 		imports._wclapInstance = {
+			release: jsIndex => {
+				delete this.#wclapMap[jsIndex];
+			},
 			init32: jsIndex => {
 				let entry = getEntry(jsIndex);
 				if (entry.hadInit) throw Error("WCLAP initialised twice");
@@ -186,6 +192,7 @@ class HostRunning {
 		})();
 	}
 	
+	/// Returns an "instance ID", which is actually an `Instance *` for the C++ host.
 	async pluginInstance(wclapConfig, wclapImports, existingMapIndex) {
 		if (!wclapImports) wclapImports = {};
 
@@ -268,7 +275,7 @@ class HostConfig {
 	}
 }
 
-export default async function createHost(options) {
+async function createHost(options) {
 	if (options?.module) return new HostConfig(options);
 
 	options.url = new URL(options.url || "./wclap-host.wasm", document.baseURI).href;

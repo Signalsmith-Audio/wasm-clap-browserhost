@@ -1,4 +1,5 @@
-import clapModule from "./clap-js/clap.mjs";
+import {createHost, createWclap} from "./clap-js/wclap.mjs";
+import CBOR from "./cbor.mjs";
 
 export default null;
 if (!globalThis.AudioWorkletProcessor) globalThis.AudioWorkletProcessor = globalThis.registerProcessor = function(){}

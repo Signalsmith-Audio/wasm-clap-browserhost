@@ -1,3 +1,9 @@
+/* This is an implementation for wclap-cpp's `Instance`, for the case when both the current code and all WCLAPs are running in `WebAssembly.Module`s
+
+Anything using this can be instantiated by `wclap-host.mjs`.  This provides the imports below, which allow copying memory and calling functions from another `WebAssembly.Module`.
+
+Currently only 32-bit WCLAPs are supported here, but 64-bit would be extremely similar.
+*/
 #include "wclap/instance.hpp"
 
 // These are provided by `host.mjs`, and let us talk to another WebAssembly instance in the same JS context
@@ -88,6 +94,9 @@ namespace js_wasm {
 		
 		wclap32::Pointer<const wclap32::wclap_plugin_entry> init32() {
 			return {_wclapInstanceInit32(jsIndex)};
+		}
+		wclap64::Pointer<const wclap64::wclap_plugin_entry> init64() {
+			return {0}; // not supported
 		}
 
 		wclap32::Pointer<void> malloc32(uint32_t size) {
