@@ -41,6 +41,11 @@ extern bool _wclapInstanceCall32(size_t jsIndex, uint32_t wasmFn, void *resultPt
 __attribute__((import_module("_wclapInstance"), import_name("call64")))
 extern bool _wclapInstanceCall64(size_t jsIndex, uint64_t wasmFn, void *resultPtr, void *argsPtr, size_t argsCount);
 
+__attribute__((import_module("_wclapInstance"), import_name("registerHost32")))
+extern uint32_t _wclapInstanceRegisterHost32(size_t jsIndex, void *fn);
+__attribute__((import_module("_wclapInstance"), import_name("registerHost64")))
+extern uint64_t _wclapInstanceRegisterHost64(size_t jsIndex, void *fn);
+
 namespace js_wasm {
 	struct TaggedValue {
 		uint8_t type; // i32, i64, f32, f64
@@ -141,19 +146,23 @@ namespace js_wasm {
 		}
 		template<class V>
 		uint32_t countUntil(wclap32::Pointer<V> ptr, const V &endValue, uint32_t maxCount) {
-			return _wclapInstanceCountUntil32(ptr, &endValue, sizeof(V), maxCount);
+			return _wclapInstanceCountUntil32(jsIndex, ptr, &endValue, sizeof(V), maxCount);
 		}
 		template<class Return, class... Args>
 		Return call(wclap32::Function<Return, Args...> fnPtr, Args... args) {
 			TaggedValue taggedResult;
 			TaggedValue taggedArgs[] = {TaggedValue::from(args)...};
-			auto argsCount = sizeof(taggedArgs)/sizeof(TaggedValue);
+			size_t argsCount = sizeof(taggedArgs)/sizeof(TaggedValue);
 
 			_wclapInstanceCall32(jsIndex, fnPtr.wasmPointer, &taggedResult, taggedArgs, argsCount);
 
 			Return v;
 			taggedResult.set(v);
 			return v;
+		}
+		template<class Return, class ...Args>
+		wclap32::Function<Return, Args...> registerHost32(Return (*fn)(Args...)) {
+			return {_wclapInstanceRegisterHost32(jsIndex, fn)};
 		}
 
 		//---- wclap64 ----//
@@ -174,7 +183,7 @@ namespace js_wasm {
 		}
 		template<class V>
 		uint64_t countUntil(wclap64::Pointer<V> ptr, const V &endValue, uint64_t maxCount) {
-			return _wclapInstanceCountUntil64(ptr, &endValue, sizeof(V), maxCount);
+			return _wclapInstanceCountUntil64(jsIndex, ptr, &endValue, sizeof(V), maxCount);
 		}
 		template<class Return, class... Args>
 		Return call(wclap64::Function<Return, Args...> fnPtr, Args... args) {
@@ -187,6 +196,10 @@ namespace js_wasm {
 			Return v;
 			taggedResult.set(v);
 			return v;
+		}
+		template<class Return, class ...Args>
+		wclap64::Function<Return, Args...> registerHost64(Return (*fn)(Args...)) {
+			return {_wclapInstanceRegisterHost64(jsIndex, fn)};
 		}
 	};
 };
