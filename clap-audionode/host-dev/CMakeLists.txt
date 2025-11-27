@@ -8,17 +8,14 @@ set(CMAKE_EXECUTABLE_SUFFIX .wasm)
 
 add_executable(host
 	${CMAKE_CURRENT_LIST_DIR}/host.cpp
-	${CMAKE_CURRENT_LIST_DIR}/wclap-js-instance.cpp
 )
 target_compile_options(host PUBLIC "-fno-exceptions")
 target_link_options(host PUBLIC "-mexec-model=reactor" "-Wl,--max-memory=4294967296" "-Wl,--export-all")
 
-add_subdirectory(modules/wclap-cpp)
-target_link_libraries(host PUBLIC wclap-cpp)
+# Add wclap-js
+add_subdirectory(../../wclap-js-cpp "wclap-js-cpp-build")
+target_link_libraries(host PUBLIC wclap-js)
+
+# CBOR for passing structured results
 add_subdirectory(modules/cbor-walker)
 target_link_libraries(host PUBLIC cbor-walker)
-
-add_executable(wasi
-	${CMAKE_CURRENT_LIST_DIR}/wasi.cpp
-)
-target_link_options(wasi PUBLIC "-mexec-model=reactor" "-Wl,--max-memory=4294967296" "-Wl,--export-all")

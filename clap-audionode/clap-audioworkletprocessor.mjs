@@ -1,4 +1,4 @@
-import {createHost, createWclap} from "./clap-js/wclap.mjs";
+import {createHost, createWclap} from "../wclap-js/wclap.mjs";
 import CBOR from "./cbor.mjs";
 
 export default null;

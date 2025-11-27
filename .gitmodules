@@ -1,6 +1,6 @@
 [submodule "host-dev/wclap-cpp"]
-	path = host-dev/modules/wclap-cpp
+	path = wclap-js-cpp/modules/wclap-cpp
 	url = https://github.com/geraintluff/wclap-api-json.git
 [submodule "host-dev/modules/cbor-walker"]
-	path = host-dev/modules/cbor-walker
+	path = clap-audionode/host-dev/modules/cbor-walker
 	url = https://github.com/geraintluff/cbor-walker.git

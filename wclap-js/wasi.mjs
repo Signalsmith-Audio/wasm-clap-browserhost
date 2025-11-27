@@ -120,9 +120,10 @@ class WasiConfig {
 
 let wasiModulePromise;
 
-export default async function createWasi() {
+export default async function createWasi(options) {
+	if (options?.module) return new WasiConfig(options);
 	if (!wasiModulePromise) {
-		let wasmUrl = new URL("../wasi.wasm", document.baseURI).href;
+		let wasmUrl = new URL("./wasi.wasm", import.meta.url).href;
 		wasiModulePromise = WebAssembly.compileStreaming(fetch(wasmUrl));
 	}
 	return new WasiConfig({module: await wasiModulePromise});

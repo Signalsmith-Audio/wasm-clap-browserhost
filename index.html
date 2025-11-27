@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>CLAP-WASM player</title>
+		<title>WCLAP test host</title>
 		<style>
 			* {
 				box-sizing: border-box;
@@ -207,8 +207,8 @@
 		<div id="after"></div>
 		<dialog id="pause-overlay">AudioContext paused</dialog>
 		<script type="module">
-			import ClapAudioNode from "./audioworkletnode-clap.mjs";
-import _for_debug from "./audioworkletprocessor-clap.mjs";
+			import ClapAudioNode from "./clap-audionode/clap-audionode.mjs";
+			import _for_debug from "./clap-audionode/clap-audioworkletprocessor.mjs"; // just to sanity-check syntax
 
 			async function startPage() {
 				let pageProxy = await pageProxyReady;

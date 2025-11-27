@@ -1,25 +1,23 @@
-# Browser-based Web-CLAP host
+# `wclap-js`: C++/JS library (& example host) for WCLAP
 
-This is a _very_ WIP proof-of-concept host for WCLAP ([Web CLAP](https://github.com/free-audio/web-clap)) plugins.  Although this host is browser-based, a similar approach could be used for non-web contexts.
+## C++ and JS library
 
-## Design
+The cleanest way to interact with WCLAPs in the browser is to write a C++ WASM host, which then exposes a simpler API to your custom JS.  This keeps all the CLAP-specific structures in the "native" world.
 
-There are three layers:
+This repo provides `wclap-js-instance`, a C++ library (`.h`/`.cpp` pair) which for building your WCLAP host.  This is built on top of [`wclap-cpp`](host-dev/modules/wclap-cpp), and provides an `Instance` implementation which abstracts all the WCLAP interactions (e.g. calling WCLAP functions, reading/writing structures in its memory).
 
-### CLAP host
+It also provides a JavaScript library (ES6 module: `wclap-js/wclap.mjs`) which can load hosts written using the above `wclap-js-instance` library, and manages the corresponding `WebAssembly`
 
-The source for this is in `clap-host/`, with the main entry point being `clapModule()` from `clap-module.mjs`.  This takes the [WebAssembly Module](https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Module) for a CLAP plugin, and lets you query/create plugin instances.
+![wclap-js architecture diagram](doc/wclap-js-outline.png)
 
-Rather than wrap the CLAP API in any way, `clap-interface.mjs` makes it easy to define and read/write C structs in the WebAssembly memory, call functions (from function pointers), proxy your own JS functions as function pointers, and add CLAP extensions.  The core CLAP types/extensions are already defined.
+It also provides a WASI helper (written in C++, with JS to load it).  Currently this doesn't actually implement anything, but it defines all the functions for `wasi_snapshot_preview1` (32-bit only).
 
-### AudioWorkletNode / AudioWorkletProcessor
+## AudioWorklet wrapper
 
-This fetches/compiles a `.wasm`, and uses the Module to construct an AudioWorkletProcessor.  This processor uses the CLAP host helpers (above) to configure/activate the plugin and process audio blocks.
+This also includes an example C++ host (in `host-dev/host.cpp`), and wrappers which load a single WCLAP as an `AudioNode` (backed by an `AudioWorkletProcessor`).
 
-The AudioWorkletNode has proxy methods added to it, which asynchronously scan/update parameters and save/load state, by posting messages across to the processor.  It also receives events from the processor (such as "state marked dirty").
+See `audioworkletnode-clap.mjs` and `audioworkletprocessor-clap.mjs`. 
 
-They also use the WIP `clap.web/1` draft extension, which (if supported) opens a web-page and passes arbitrary messages between the web-page and the plugin, allowing plugins to present a web-based UI.  Since this host is running in the browser, this web-view is loaded in an `<iframe>`.
+## Example host
 
-### Service Worker
-
-WCLAP bundles might contain multiple resources, in which case they should be served as `.tar.gz` archives.  The main page registers a Service Worker which can fetch these bundles, extract them, and serve them as if they were individual resources.
+On top of that, it also includes an example host, which loads WCLAPs using the AudioWorklet wrappers, and connect it to a demo audio file and/or virtual keyboard.
