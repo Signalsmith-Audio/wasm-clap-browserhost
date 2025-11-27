@@ -2,6 +2,7 @@
 	Hosts WCLAP instances, manages plugins, and exports a simpler API for use from JS
 */
 #include "wclap/wclap.hpp"
+#include "wclap/memory-arena.hpp"
 #include "./wclap-js-instance.h"
 
 #include "cbor-walker/cbor-walker.h"
@@ -34,8 +35,9 @@ struct HostedWclap {
 	bool ok = false;
 
 	std::unique_ptr<Instance> instance;
+	wclap::MemoryArena<Instance, false> arena;
 	
-	HostedWclap(Instance *instance) : instance(instance) {
+	HostedWclap(Instance *instance) : instance(instance), arena(instance) {
 		if (instance->is64()) return;
 
 		// TODO: register host methods here, before it gets locked by `.init()`
