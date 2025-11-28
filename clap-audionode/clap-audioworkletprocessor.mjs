@@ -1,164 +1,142 @@
-import {createHost, createWclap} from "../wclap-js/wclap.mjs";
+import {getHost, startHost, getWclap} from "../wclap-js/wclap.mjs";
+import hostImports from "./host-imports.mjs";
 import CBOR from "./cbor.mjs";
 
+// For debugging, we sometimes import this module into the main page, and makes that work
 export default null;
 if (!globalThis.AudioWorkletProcessor) globalThis.AudioWorkletProcessor = globalThis.registerProcessor = function(){}
-
-const thisUrl = import.meta.url;
 
 if (!globalThis.clapRouting) {
 	// Map from instance ID -> `{events: [...]}`
 	globalThis.clapRouting = Object.create(null);
 }
 
-if (globalThis.WorkerGlobalScope) {
-	console.log("started worker");
-	addEventListener('message', async e => {
-		let replyPort = e.ports[0];
-		console.log("worker received arguments:", e.data);
-		let options = e.data[0], threadId = e.data[1], threadArg = e.data[2];
-	
-		let spawnThread = (options, threadId, threadArg) => {
-			console.log("spawning worker thread (from inside worker)");
-			options = Object.assign({}, options);
-			options.module = null;
-			replyPort.postMessage(["worker", thisUrl, options, threadId, threadArg]);
-		};
-
-		let module = await clapModule(options, spawnThread, true/*skipInit*/);
-		module.wasmInstance.exports.wasi_thread_start(threadId, threadArg);
-	});
-
-	globalThis.AudioWorkletProcessor = globalThis.registerProcessor = function(){};
-}
-
 class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 	inputChannelCounts = [];
 	outputChannelCounts = [];
-	maxFramesCount = 1024;
+	maxFramesCount = 128;
 
-	clapModule;
-	clapPlugin;
-	hostArena;
-
-	running = true;
+	host;
+	hostedPtr;
+	
+	running = false;
 	routingId;
 	static #cleanup = new FinalizationRegistry(routingId => {
 		delete globalThis.clapRouting[routingId];
 	});
 
+	// Decodes the (host-specific) `CborReturn *`
+	decodeCbor(ptr) {
+		if (!ptr) return null;
+		let buffer = this.host.memory.buffer;
+		let dataView = new DataView(buffer);
+		let cborPtr = dataView.getUint32(ptr, true);
+		let cborLength = dataView.getUint32(ptr + 4, true);
+
+		// Have to copy because the TextDecoder doesn't like shared buffers
+		let bytes = new Uint8Array(buffer).slice(cborPtr, cborPtr + cborLength);
+		return CBOR.decode(bytes);
+	};
+
 	constructor(options) {
 		super();
-		
-		let spawnThread = (options, threadId, threadArg) => {
-			console.log("spawning worker thread");
-			options = Object.assign({}, options);
-			options.module = null;
-			this.port.postMessage(["worker", thisUrl, options, threadId, threadArg]);
-		};
 		this.port.onmessageerror = e => {
 			console.error(e);
 			debugger;
 		};
 
-		let clapOptions = options.processorOptions;
-		if (!clapOptions) throw Error("no processorOptions");
-		clapModule(clapOptions, spawnThread).then(async module => {
-			let pluginId = clapOptions.pluginId;
+		// When passing between contexts, these get cloned with just their properties.
+		// This turns them back into the correct classes
+		(async init => {
+			this.host = await createHost(init.host, hostImports);
+			let hostApi = this.host.instance.exports;
+			let instancePtr = await this.host.startWclap(init.wclap);
+			this.hostedPtr = hostApi.makeHosted(instancePtr);
+
+			let pluginId = init.pluginId;
 			if (!pluginId) {
+				debugger;
+				let info = this.decodeCbor(hostApi.getInfo(this.hostedPtr));
 				let pluginIndex = clapOptions.pluginIndex || 0;
-				pluginId = module.plugins[pluginIndex].id;
+				pluginId = info.plugins[pluginIndex].id;
 			}
-			
-			let running = this.clapModule = await module.start();
-			
-			let factoryPtr = running.clap_entry.get_factory(running.writeString(running.api.CLAP_PLUGIN_FACTORY_ID));
-			let factory = factoryPtr.getAs('clap_plugin_factory');
 
-			//let hostArena = this.hostArena = running.getArena();
-			console.log(typeof Worker);
-
-			let clapPlugin = factory.create_plugin(factoryPtr, 0, running.writeString(pluginId));
-			debugger;
-
-			Object.assign(clapPlugin.hostJs, this.makeHostMethods());
-			this.clapPlugin = clapPlugin;
-			this.clapUpdateAudioPorts();
-			this.clapActivate();
-			
 			// Manage the routing entry
 			this.routingId = pluginId + "/" + Math.random().toString(16).substr(2);
 			globalThis.clapRouting[this.routingId] = {
 				events: []
 			};
 			ClapAudioWorkletProcessor.#cleanup.register(this, this.routingId);
-			
-			let webviewStartPage = null;
-			let webviewExt = this.clapPlugin.ext['clap.webview/3'];
-			if (webviewExt) {
-				let buffer = this.clapPlugin.api.tempBytes(2048);
-				let length = webviewExt.get_uri(buffer, 2048);
-				if (length > 0 || length < 2048) {
-					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
-				}
-			} else if (webviewExt = this.clapPlugin.ext['clap.webview/2']) {
-				let buffer = this.clapPlugin.api.tempBytes(2048);
-				let length = webviewExt.get_uri(buffer, 2048);
-				if (length > 0 || length < 2048) {
-					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
-					// Relative paths converted into `file://` URIs
-					if (!/^[a-z0-9_-]+\:/.test(webviewStartPage)) {
-						if (webviewStartPage[0] != '/') webviewStartPage = "/" + webviewStartPage;
-						webviewStartPage = "file://" + module.vfsPath + webviewStartPage;
-					}
-				}
-			} else if (webviewExt = this.clapPlugin.ext['clap.webview/1']) {
-				let buffer = this.clapPlugin.api.tempBytes(2048);
-				if (webviewExt.provide_starting_uri(buffer, 2048)) {
-					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
-					// Relative paths converted into `file://` URIs
-					if (!/^[a-z0-9_-]+\:/.test(webviewStartPage)) {
-						if (webviewStartPage[0] != '/') webviewStartPage = "/" + webviewStartPage;
-						webviewStartPage = "file://" + module.vfsPath + webviewStartPage;
-					}
-				}
-			}
 
-			// initial message lists plugin descriptor and remote methods
-			this.port.postMessage({
-				routingId: this.routingId,
-				desc: clapPlugin.api.clap_plugin_descriptor(clapPlugin.plugin.desc),
-				methods: Object.keys(this.remoteMethods),
-				webview: webviewStartPage,
-				audioPorts: {'in': this.audioPortsIn, 'out': this.audioPortsOut}
-			});
-		});
-		
-		// subsequent messages are proxied method calls
-		this.port.onmessage = async event => {
-			if (this.fatalError) return;
-			
-			let data = event.data;
-			if (data instanceof ArrayBuffer) {
-				let webviewExt = this.clapPlugin.ext['clap.webview/3'] || this.clapPlugin.ext['clap.webview/2'] || this.clapPlugin.ext['clap.webview/1'];
-				if (webviewExt) {
-					let buffer = this.clapPlugin.api.tempTyped(Uint8Array, data.byteLength);
-					buffer.set(new Uint8Array(data));
-					webviewExt.receive(buffer, buffer.length);
-				}
-				return;
-			}
-			let [requestId, method, args] = data;
+			running = true;
+		})(options.processorOptions);
 
-			try {
-				let result = await this.remoteMethods[method].call(this, ...args);
-				this.port.postMessage([requestId, null, result]);
-				this.mainThreadCallbackIfNeeded();
-			} catch (e) {
-				this.failWithError(e);
-				this.port.postMessage([requestId, e]);
-			}
-		};
+//			let webviewStartPage = null;
+//			let webviewExt = this.clapPlugin.ext['clap.webview/3'];
+//			if (webviewExt) {
+//				let buffer = this.clapPlugin.api.tempBytes(2048);
+//				let length = webviewExt.get_uri(buffer, 2048);
+//				if (length > 0 || length < 2048) {
+//					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
+//				}
+//			} else if (webviewExt = this.clapPlugin.ext['clap.webview/2']) {
+//				let buffer = this.clapPlugin.api.tempBytes(2048);
+//				let length = webviewExt.get_uri(buffer, 2048);
+//				if (length > 0 || length < 2048) {
+//					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
+//					// Relative paths converted into `file://` URIs
+//					if (!/^[a-z0-9_-]+\:/.test(webviewStartPage)) {
+//						if (webviewStartPage[0] != '/') webviewStartPage = "/" + webviewStartPage;
+//						webviewStartPage = "file://" + module.vfsPath + webviewStartPage;
+//					}
+//				}
+//			} else if (webviewExt = this.clapPlugin.ext['clap.webview/1']) {
+//				let buffer = this.clapPlugin.api.tempBytes(2048);
+//				if (webviewExt.provide_starting_uri(buffer, 2048)) {
+//					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
+//					// Relative paths converted into `file://` URIs
+//					if (!/^[a-z0-9_-]+\:/.test(webviewStartPage)) {
+//						if (webviewStartPage[0] != '/') webviewStartPage = "/" + webviewStartPage;
+//						webviewStartPage = "file://" + module.vfsPath + webviewStartPage;
+//					}
+//				}
+//			}
+//
+//			// initial message lists plugin descriptor and remote methods
+//			this.port.postMessage({
+//				routingId: this.routingId,
+//				desc: clapPlugin.api.clap_plugin_descriptor(clapPlugin.plugin.desc),
+//				methods: Object.keys(this.remoteMethods),
+//				webview: webviewStartPage,
+//				audioPorts: {'in': this.audioPortsIn, 'out': this.audioPortsOut}
+//			});
+//		});
+//		
+//		// subsequent messages are proxied method calls
+//		this.port.onmessage = async event => {
+//			if (this.fatalError) return;
+//			
+//			let data = event.data;
+//			if (data instanceof ArrayBuffer) {
+//				let webviewExt = this.clapPlugin.ext['clap.webview/3'] || this.clapPlugin.ext['clap.webview/2'] || this.clapPlugin.ext['clap.webview/1'];
+//				if (webviewExt) {
+//					let buffer = this.clapPlugin.api.tempTyped(Uint8Array, data.byteLength);
+//					buffer.set(new Uint8Array(data));
+//					webviewExt.receive(buffer, buffer.length);
+//				}
+//				return;
+//			}
+//			let [requestId, method, args] = data;
+//
+//			try {
+//				let result = await this.remoteMethods[method].call(this, ...args);
+//				this.port.postMessage([requestId, null, result]);
+//				this.mainThreadCallbackIfNeeded();
+//			} catch (e) {
+//				this.failWithError(e);
+//				this.port.postMessage([requestId, e]);
+//			}
+//		};
 	}
 
 	fatalError = null;

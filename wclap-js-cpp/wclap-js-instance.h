@@ -3,6 +3,7 @@
 Anything using this can be instantiated by `wclap-host.mjs`.  This provides the imports below, which allow copying memory and calling functions from another `WebAssembly.Module`.
 */
 #include "wclap/instance.hpp"
+#include <type_traits>
 
 // These are provided by `wclap-host.mjs`, and let us talk to another WebAssembly instance in the same JS context
 __attribute__((import_module("_wclapInstance"), import_name("initThread")))
@@ -32,19 +33,19 @@ __attribute__((import_module("_wclapInstance"), import_name("memcpyFromOther64")
 extern bool _wclapInstanceMemcpyFromOther64(size_t jsIndex, void *dest, uint64_t srcP64, uint64_t count);
 
 __attribute__((import_module("_wclapInstance"), import_name("countUntil32")))
-extern uint32_t _wclapInstanceCountUntil32(size_t jsIndex, uint32_t startP32, void *untilPtr, size_t itemSize, size_t maxCount);
+extern uint32_t _wclapInstanceCountUntil32(size_t jsIndex, uint32_t startP32, const void *untilPtr, size_t itemSize, size_t maxCount);
 __attribute__((import_module("_wclapInstance"), import_name("countUntil64")))
-extern uint64_t _wclapInstanceCountUntil64(size_t jsIndex, uint64_t startP64, void *untilPtr, size_t itemSize, size_t maxCount);
+extern uint64_t _wclapInstanceCountUntil64(size_t jsIndex, uint64_t startP64, const void *untilPtr, size_t itemSize, size_t maxCount);
 
 __attribute__((import_module("_wclapInstance"), import_name("call32")))
-extern bool _wclapInstanceCall32(size_t jsIndex, uint32_t wasmFn, void *resultPtr, void *argsPtr, size_t argsCount);
+extern bool _wclapInstanceCall32(size_t jsIndex, uint32_t wasmFn, void *resultPtr, const void *argsPtr, size_t argsCount);
 __attribute__((import_module("_wclapInstance"), import_name("call64")))
-extern bool _wclapInstanceCall64(size_t jsIndex, uint64_t wasmFn, void *resultPtr, void *argsPtr, size_t argsCount);
+extern bool _wclapInstanceCall64(size_t jsIndex, uint64_t wasmFn, void *resultPtr, const void *argsPtr, size_t argsCount);
 
 __attribute__((import_module("_wclapInstance"), import_name("registerHost32")))
-extern uint32_t _wclapInstanceRegisterHost32(size_t jsIndex, void *fn);
+extern uint32_t _wclapInstanceRegisterHost32(size_t jsIndex, const void *fn);
 __attribute__((import_module("_wclapInstance"), import_name("registerHost64")))
-extern uint64_t _wclapInstanceRegisterHost64(size_t jsIndex, void *fn);
+extern uint64_t _wclapInstanceRegisterHost64(size_t jsIndex, const void *fn);
 
 namespace js_wasm {
 	struct TaggedValue {
@@ -121,7 +122,8 @@ namespace js_wasm {
 			return pathChars.data();
 		}
 
-		int (*threadSpawn)(WclapInstance *instance, uint64_t startArg) = nullptr;
+		void *threadSpawnContext = nullptr;
+		int (*threadSpawn)(void *context, uint64_t startArg) = nullptr;
 
 		// Thread-specific init - calls through to wasi_thread_start()
 		void initThread(int threadId, uint64_t startArg) {
@@ -146,7 +148,7 @@ namespace js_wasm {
 		}
 		template<class V>
 		uint32_t countUntil(wclap32::Pointer<V> ptr, const V &endValue, uint32_t maxCount) {
-			return _wclapInstanceCountUntil32(jsIndex, ptr, &endValue, sizeof(V), maxCount);
+			return _wclapInstanceCountUntil32(jsIndex, ptr.wasmPointer, &endValue, sizeof(V), maxCount);
 		}
 		template<class Return, class... Args>
 		Return call(wclap32::Function<Return, Args...> fnPtr, Args... args) {
@@ -156,9 +158,11 @@ namespace js_wasm {
 
 			_wclapInstanceCall32(jsIndex, fnPtr.wasmPointer, &taggedResult, taggedArgs, argsCount);
 
-			Return v;
-			taggedResult.set(v);
-			return v;
+			if constexpr (!std::is_void_v<Return>) {
+				Return v;
+				taggedResult.set(v);
+				return v;
+			}
 		}
 		template<class Return, class ...Args>
 		wclap32::Function<Return, Args...> registerHost32(Return (*fn)(Args...)) {
@@ -183,7 +187,7 @@ namespace js_wasm {
 		}
 		template<class V>
 		uint64_t countUntil(wclap64::Pointer<V> ptr, const V &endValue, uint64_t maxCount) {
-			return _wclapInstanceCountUntil64(jsIndex, ptr, &endValue, sizeof(V), maxCount);
+			return _wclapInstanceCountUntil64(jsIndex, ptr.wasmPointer, &endValue, sizeof(V), maxCount);
 		}
 		template<class Return, class... Args>
 		Return call(wclap64::Function<Return, Args...> fnPtr, Args... args) {

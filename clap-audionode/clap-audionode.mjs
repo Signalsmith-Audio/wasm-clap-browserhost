@@ -1,4 +1,5 @@
-import {createHost, createWclap} from "../wclap-js/wclap.mjs";
+import {getHost, startHost, getWclap} from "../wclap-js/wclap.mjs";
+import hostImports from "./host-imports.mjs";
 import CBOR from "./cbor.mjs";
 
 export default class ClapAudioNode {
@@ -8,25 +9,25 @@ export default class ClapAudioNode {
 	#m_pluginConfigPromise;
 	
 	static #m_routingId = Symbol();
-	static #m_hostConfig = {
-		url: new URL("./host.wasm", import.meta.url).href,
-	};
-	#m_hostImports = {};
 
-	constructor(options) {
+	constructor(wclapOptions) {
 		if (typeof options === 'string') {
 			options = {url: new URL(options, document.baseURI).href};
 		}
 		// This particular host gets instantiated once per plugin, but that doesn't need to be true in general
-		this.#m_hostConfigPromise = createHost(ClapAudioNode.#m_hostConfig);
-		this.#m_pluginConfigPromise = createWclap(options);
+		this.#m_hostConfigPromise = getHost(new URL("./host.wasm", import.meta.url).href);
+		this.#m_pluginConfigPromise = getWclap(wclapOptions);
 	}
 	
 	async plugins() {
-		let hostConfig = await this.#m_hostConfigPromise;
-		let pluginConfig = await this.#m_pluginConfigPromise;
-		
-		// Decodes the (host-specific) `CborReturn *`
+		let host = await startHost(await this.#m_hostConfigPromise);
+		let hostApi = host.instance.exports;
+		let instancePtr = await host.startWclap(pluginConfig);
+
+		let hostedPtr = hostApi.makeHosted(instancePtr);
+		if (!hostedPtr) throw Error("Failed to load WCLAP");
+
+		// Decodes `CborReturn *`
 		let decodeCbor = ptr => {
 			if (!ptr) return null;
 			let buffer = host.memory.buffer;
@@ -38,20 +39,11 @@ export default class ClapAudioNode {
 			let bytes = new Uint8Array(buffer).slice(cborPtr, cborPtr + cborLength);
 			return CBOR.decode(bytes);
 		};
-		let host = await hostConfig.instance({/*custom imports would go here*/});
-		let api = host.instance.exports;
-		
-		// generic
-		let instanceId = await host.pluginInstance(pluginConfig, this.#m_hostImports);
 
-		// Specific to this host
-		let wclap = api.makeHosted(instanceId);
-		if (!wclap) throw Error("Failed to load WCLAP");
-
-		let info = decodeCbor(api.getInfo(wclap));
+		let info = decodeCbor(api.getInfo(hostedPtr));
 		console.log(info);
 
-		api.removeHosted(wclap);
+		api.removeHosted(hostedPtr);
 		return info.plugins;
 	}
 	
@@ -71,9 +63,15 @@ export default class ClapAudioNode {
 			await audioContext.audioWorklet.addModule(moduleUrl);
 		}
 		audioContext[this.#m_moduleAddedToAudioContext] = true;
+		
+		nodeOptions.processorOptions = {
+			host: await this.#m_hostConfigPromise,
+			wclap: await this.#m_pluginConfigPromise,
+			pluginId: pluginId
+		};
 
-//		let effectNode = new AudioWorkletNode(audioContext, 'audioworkletprocessor-clap', nodeOptions);
-//
+		let effectNode = new AudioWorkletNode(audioContext, 'audioworkletprocessor-clap', nodeOptions);
+
 //		let responseMap = Object.create(null);
 //		let idCounter = 0;
 //		function addRemoteMethod(name) {
@@ -96,7 +94,7 @@ export default class ClapAudioNode {
 //		// Hacky event-handling: add a named function to this map
 //		effectNode.events = Object.create(null);
 //
-//		return new Promise(resolve => {
+		return new Promise(resolve => {
 //			function spawnWorker(data) {
 //				if (data?.[0] == "worker") {
 //					let moduleUrl = data[1], options = data[2], threadId = data[3], threadArg = data[4];
@@ -107,8 +105,8 @@ export default class ClapAudioNode {
 //				}
 //				return false;
 //			}
-//
-//			effectNode.port.onmessage = e => {
+
+			effectNode.port.onmessage = e => {
 //				if (spawnWorker(e.data)) return;
 //				let {routingId, desc, methods, webview} = e.data;
 //				effectNode[ClapAudioNode.#m_routingId] = routingId;
@@ -199,9 +197,9 @@ export default class ClapAudioNode {
 //					effectNode.resume();
 //					prevConnect.apply(this, arguments);
 //				};
-//
-//				resolve(effectNode);
-//			};
-//		});
+
+				resolve(effectNode);
+			};
+		});
 	}
 }

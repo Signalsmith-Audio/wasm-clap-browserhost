@@ -44,15 +44,13 @@ struct HostedWclap {
 		instance->init();
 		if (!instance->entry32) return;
 
-		// Call clap_entry.init()
-		const char *path = instance->path();
-		auto remoteStr = instance->malloc32(std::strlen(path) + 1).cast<char>();
-		instance->setArray(remoteStr, path, std::strlen(path) + 1);
-
-		auto entry = instance->get(instance->entry32);
-		if (!instance->call(entry.init, remoteStr)) return;
-
 		ok = true;
+	}
+	~HostedWclap() {
+		if (ok) { // Call clap_entry.deinit()
+			auto entry = instance->get(instance->entry32);
+			instance->call(entry.deinit);
+		}
 	}
 };
 
@@ -76,13 +74,11 @@ extern "C" {
 		auto cbor = getCbor();
 		cbor.openMap();
 		
-		const char *factoryId = "clap.plugin-factory";
-		auto remoteStr = instance.malloc32(std::strlen(factoryId) + 1).cast<char>();
-		instance.setArray(remoteStr, factoryId, std::strlen(factoryId) + 1);
+		auto scoped = hosted->arena.scoped();
 
 		auto entry = instance.get(instance.entry32);
 
-		cbor.addUtf8("CLAP");
+		cbor.addUtf8("clapVersion");
 		cbor.openArray(3);
 		cbor.addInt(entry.wclap_version.major);
 		cbor.addInt(entry.wclap_version.minor);
@@ -94,7 +90,7 @@ extern "C" {
 		cbor.addUtf8("plugins");
 		cbor.openArray();
 		
-		auto pluginFactory = instance.call(entry.get_factory, remoteStr)
+		auto pluginFactory = instance.call(entry.get_factory, scoped.writeString("clap.plugin-factory"))
 			.cast<wclap32::wclap_plugin_factory>();
 		if (pluginFactory) {
 			auto factory = instance.get(pluginFactory);
@@ -108,10 +104,11 @@ extern "C" {
 				auto copyString = [&](const char *key, wclap32::Pointer<const char> ptr) {
 					if (!ptr) return;
 					cbor.addUtf8(key);
-					instance.getArray(ptr, str, 255);
+					auto length = instance.countUntil(ptr, 0, 255);
+					instance.getArray(ptr, str, length + 1);
 					cbor.addUtf8(str);
 				};
-
+				
 				cbor.openMap();
 				copyString("id", descriptor.id);
 				copyString("name", descriptor.name);

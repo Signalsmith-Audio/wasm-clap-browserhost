@@ -1,3 +1,12 @@
+/* Loads a C++ WASI implementation.
+
+Each Wasi object (obtained with `createWasi()`) can only be used to provide imports for a single other module.  Once it's been created, it needs to be bound to that module's memory using `bindToOtherMemory()`.
+
+However, you can use the same WASI context for multiple other instances, by creating copies with `copyForRebinding()` (on the same thread), or `initObj()` when passing to a Worker/Worklet (which then gets passed to `createWasi()`.
+
+If the browser is not cross-origin isolated, `initObj()` will pass the WebAssembly module across (to avoid re-fetching) but the WASI contexts will not be shared.
+*/
+
 function fillWasiFromInstance(instance, wasiImports) {
 	// Collect WASI methods by matching `{group}__{method}` exports
 	for (let name in instance.exports) {
@@ -55,16 +64,26 @@ function fromString(memory, ptr, length) {
 	}
 }
 
-class WasiRunning {
+class Wasi {
+	// This config is a plain object with {module, ?memory}
+	// The memory is only populated if it's sharable across threads *and* has already been initialised
 	#config;
+	#memory;
 	#otherModuleMemory;
 	
 	importObj = {};
 
-	constructor(config, skipInit) {
+	constructor(config, memory) {
 		this.#config = config;
-		let memory = config.memory;
-		if (!memory) memory = new WebAssembly.Memory({initial: 8, maximum: 32768, shared: true});
+		this.#memory = config.memory || memory;
+
+		let needsInit = false;
+		if (!this.#memory) {
+			needsInit = true;
+			this.#memory = new WebAssembly.Memory({initial: 8, maximum: 32768, shared: true});
+			if (globalThis.crossOriginIsolated) config.memory = this.#memory;
+		}
+
 		let wasiImplImports = {
 			env: {
 				memory: memory,
@@ -89,42 +108,35 @@ class WasiRunning {
 
 		this.ready = (async _ => {
 			let instance = await WebAssembly.instantiate(this.#config.module, wasiImplImports);
-			if (!skipInit) instance.exports._initialize();
+			if (needsInit) instance.exports._initialize();
 			setWasiInstance(instance);
 			fillWasiFromInstance(instance, this.importObj);
 			return this;
 		})();
 	}
 	
-	setOtherMemory(memory) {
+	initObj() {
+		return Object.assign({}, this.#config);
+	}
+	
+	bindToOtherMemory(memory) {
 		this.#otherModuleMemory = memory;
 	}
-	
-}
 
-class WasiConfig {
-	memory;
-	module;
-	
-	constructor(initObj) {
-		Object.assign(this, initObj);
-		if (!this.memory && globalThis.crossOriginIsolated) {
-			this.memory = new WebAssembly.Memory({initial: 8, maximum: 32768, shared: true});
-		}
-	}
-
-	async instance(skipInit) {
-		return new WasiRunning(this, skipInit).ready;
+	// Makes another instance, using the same memory (even if it's on the same thread)
+	async copyForRebinding() {
+		return new Wasi(this.#config, this.#memory).ready;
 	}
 }
 
 let wasiModulePromise;
 
-export default async function createWasi(options) {
-	if (options?.module) return new WasiConfig(options);
+export default async function createWasi(initObj) {
+	if (initObj?.module) return new Wasi(initObj).ready;
+
 	if (!wasiModulePromise) {
 		let wasmUrl = new URL("./wasi.wasm", import.meta.url).href;
 		wasiModulePromise = WebAssembly.compileStreaming(fetch(wasmUrl));
 	}
-	return new WasiConfig({module: await wasiModulePromise});
+	return new Wasi({module: await wasiModulePromise});
 }
