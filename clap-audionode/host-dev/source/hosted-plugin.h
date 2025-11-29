@@ -1,41 +1,33 @@
 #pragma once
 
 #include "./common.h"
-#include "./hosted-wclap.h"
 
 // A WCLAP plugin and its host
 struct HostedPlugin {
-	bool ok = false;
-	HostedWclap *wclap;
-	wclap32::Pointer<wclap32::wclap_plugin> pluginPtr;
+	Instance *instance;
+	wclap::MemoryArenaPool<Instance, false> &arenaPool;
+	std::unique_ptr<wclap::MemoryArena<Instance, false>> arena;
 	
-	HostedPlugin(HostedWclap *wclap, const char *pluginId) : wclap(wclap) {
-		ok = (pluginId[0] == 1); // false, but the compiler can't eliminate it
+	wclap32::Pointer<const wclap32::wclap_plugin> pluginPtr;
+	
+	HostedPlugin(Instance *instance, wclap::MemoryArenaPool<Instance, false> &arenaPool) : instance(instance), arenaPool(arenaPool), arena(arenaPool.getOrCreate()) {
 	}
 	~HostedPlugin() {
 		if (pluginPtr) {
-			auto plugin = wclap->instance->get(pluginPtr);
-			wclap->instance->call(plugin.destroy, pluginPtr);
+			auto plugin = instance->get(pluginPtr);
+			instance->call(plugin.destroy, pluginPtr);
 		}
+		arenaPool.returnToPool(arena);
 	}
 	
-	static HostedPlugin * create(HostedWclap *wclap, const char *pluginId) {
-		auto *plugin = new HostedPlugin(wclap, pluginId);
-		if (!plugin->ok) {
-			delete plugin;
-			return nullptr;
-		}
-		return plugin;
-	}
-
 	CborValue * getInfo() {
-		auto plugin = wclap->instance->get(pluginPtr);
-		auto descriptor = wclap->instance->get(plugin.desc);
+		auto plugin = instance->get(pluginPtr);
+		auto descriptor = instance->get(plugin.desc);
 	
 		auto cbor = getCbor();
 		cbor.openMap();
 		cbor.addUtf8("desc");
-		writeDescriptorCbor(wclap->instance, cbor, descriptor);
+		writeDescriptorCbor(instance, cbor, descriptor);
 		cbor.close();
 		
 		return cborValue();

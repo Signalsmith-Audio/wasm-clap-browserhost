@@ -1,27 +1,35 @@
 #pragma once
 
 #include "./common.h"
-#include <memory>
+#include "./hosted-plugin.h"
 
-struct HostedPlugin;
+#include <memory>
+#include <vector>
 
 // Takes ownership of an Instance
 struct HostedWclap {
 	bool ok = false;
 
+	wclap32::wclap_host host;
+
 	std::unique_ptr<Instance> instance;
-	wclap::MemoryArena<Instance, false> arena;
+	wclap::MemoryArenaPool<Instance, false> arenaPool;
 	
-	HostedWclap(Instance *instance) : instance(instance) {
+	std::shared_mutex mutex;
+	std::vector<std::unique_ptr<HostedPlugin>> pluginList;
+	
+	HostedWclap(Instance *instance) : instance(instance), arenaPool(instance) {
 		if (instance->is64()) return;
 
-		// TODO: register host methods here, before it gets locked by `.init()`
+		// Set up copies of all structures the plugins might need - they'll only differ by context pointer
+		// This registers all the host methods, before the instance gets locked by `.init()`
+		host.wclap_version = {1, 2, 7};
+		
 		instance->init();
 		if (!instance->entry32) return;
-		arena = {instance}; // We have to wait until after `init()`, since this calls malloc
 		
 		// Call clap_entry.init();
-		auto scoped = arena.scoped();
+		auto scoped = arenaPool.scoped();
 		auto entry = instance->get(instance->entry32);
 		if (!instance->call(entry.init, scoped.writeString(instance->path()))) return;
 
@@ -47,7 +55,7 @@ struct HostedWclap {
 		auto cbor = getCbor();
 		cbor.openMap();
 		
-		auto scoped = arena.scoped();
+		auto scoped = arenaPool.scoped();
 
 		auto entry = instance->get(instance->entry32);
 
@@ -79,5 +87,45 @@ struct HostedWclap {
 		cbor.close(); // array
 		cbor.close(); // map
 		return cborValue();
+	}
+	
+	HostedPlugin * createPlugin(const char *pluginId) {
+		auto arena = arenaPool.getOrCreate();
+		std::unique_lock guard{mutex};
+		
+		// Find a plugin-list entry
+		size_t pluginIndex = pluginList.size();
+		for (size_t i = 0; i < pluginList.size(); ++i) {
+			if (!pluginList[i]) { // entries get nulled, not removed, so we search for an empty one first
+				pluginIndex = i;
+				break;
+			}
+		}
+		if (pluginIndex >= pluginList.size()) pluginList.emplace_back(nullptr);
+		pluginList[pluginIndex] = std::unique_ptr<HostedPlugin>{new HostedPlugin(instance.get(), arenaPool)};
+		auto &plugin = *pluginList[pluginIndex];
+		
+		host.host_data = {uint32_t(pluginIndex)};
+		{
+			// Write the WCLAP host to the plugin's memory arena
+			auto scoped = plugin.arena->scoped();
+			auto hostPtr = scoped.copyAcross(host);
+			scoped.commit(); // keep that host for the lifetime of the plugin
+
+			// Attempt to actually create the plugin using the plugin factory
+			auto entry = instance->get(instance->entry32);
+			auto pluginFactory = instance->call(entry.get_factory, scoped.writeString("clap.plugin-factory"))
+				.cast<wclap32::wclap_plugin_factory>();
+			if (pluginFactory) {
+				auto factory = instance->get(pluginFactory);
+				plugin.pluginPtr = instance->call(factory.create_plugin, pluginFactory, hostPtr, scoped.writeString(pluginId));
+			}
+		}
+
+		if (!plugin.pluginPtr) {
+			pluginList[pluginIndex] = nullptr;
+			return nullptr;
+		}
+		return pluginList[pluginIndex].get();
 	}
 };

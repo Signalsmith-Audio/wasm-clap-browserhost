@@ -17,7 +17,7 @@ extern "C" {
 
 	HostedPlugin * createPlugin(HostedWclap *hosted, CborValue *cbor) {
 		 auto pluginId = cbor->read().utf8();
-		 return HostedPlugin::create(hosted, pluginId.c_str());
+		 return hosted->createPlugin(pluginId.c_str());
 	}
 	void destroyPlugin(HostedPlugin *plugin) {
 		delete plugin;
