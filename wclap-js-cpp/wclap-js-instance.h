@@ -43,9 +43,9 @@ __attribute__((import_module("_wclapInstance"), import_name("call64")))
 extern bool _wclapInstanceCall64(const void *handle, uint64_t wasmFn, void *resultPtr, const void *argsPtr, size_t argsCount);
 
 __attribute__((import_module("_wclapInstance"), import_name("registerHost32")))
-extern uint32_t _wclapInstanceRegisterHost32(const void *handle, const void *fn);
+extern uint32_t _wclapInstanceRegisterHost32(const void *handle, void *context, size_t fn, const char *sig, size_t sigLength);
 __attribute__((import_module("_wclapInstance"), import_name("registerHost64")))
-extern uint64_t _wclapInstanceRegisterHost64(const void *handle, const void *fn);
+extern uint64_t _wclapInstanceRegisterHost64(const void *handle, void *context, size_t fn, const char *sig, size_t sigLength);
 
 namespace js_wasm {
 	struct TaggedValue {
@@ -102,6 +102,27 @@ namespace js_wasm {
 			set(v.wasmPointer);
 		}
 	};
+
+	template<typename T>
+	char typeSig() {
+		using V = std::remove_cv_t<T>;
+		if constexpr (std::is_void_v<V>) {
+			return 'v';
+		} else if constexpr (std::is_same_v<V, double>) {
+			return 'D';
+		} else if constexpr (std::is_same_v<V, float>) {
+			return 'F';
+		} else if constexpr (sizeof(V) <= 4) {
+			return 'I';
+		}
+		return 'L';
+	}
+
+	template<class Return, class... Args>
+	std::vector<char> makeHostSig() {
+		std::vector<char> sig = {typeSig<Return>(), typeSig<Args>()...};
+		return sig;
+	}
 	
 	struct WclapInstance {
 		void * const handle;
@@ -165,8 +186,9 @@ namespace js_wasm {
 			}
 		}
 		template<class Return, class ...Args>
-		wclap32::Function<Return, Args...> registerHost32(Return (*fn)(Args...)) {
-			return {_wclapInstanceRegisterHost32(handle, fn)};
+		wclap32::Function<Return, Args...> registerHost32(void *context, Return (*fn)(void *, Args...)) {
+			auto sig = makeHostSig<Return, Args...>();
+			return {_wclapInstanceRegisterHost32(handle, context, (size_t)fn, sig.data(), sig.size())};
 		}
 
 		//---- wclap64 ----//
@@ -202,8 +224,9 @@ namespace js_wasm {
 			return v;
 		}
 		template<class Return, class ...Args>
-		wclap64::Function<Return, Args...> registerHost64(Return (*fn)(Args...)) {
-			return {_wclapInstanceRegisterHost64(handle, fn)};
+		wclap64::Function<Return, Args...> registerHost64(void *context, Return (*fn)(void *, Args...)) {
+			auto sig = makeHostSig<Return, Args...>();
+			return {_wclapInstanceRegisterHost64(handle, context, fn, sig.data(), sig.size())};
 		}
 	};
 };

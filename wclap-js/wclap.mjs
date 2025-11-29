@@ -1,5 +1,6 @@
 import {getWasi, startWasi} from "./wasi.mjs";
 import getWclap from "./wclap-plugin.mjs";
+import generateForwardingWasm from "./generate-forwarding-wasm.mjs"
 
 /* This exports `createHost()`, which should work for any Wasm32 host using the `wclap-js-instance` version of `Instance`.*/
 export {getHost, startHost, getWclap};
@@ -8,6 +9,7 @@ class WclapHost {
 	#config;
 	#wasi;
 	#wclapMap = Object.create(null);
+	#functionTable;
 	
 	ready;
 	instance;
@@ -27,18 +29,62 @@ class WclapHost {
 		// Methods which let the host manage the WCLAP in another module
 		let getEntry = instancePtr => {
 			let entry = this.#wclapMap[instancePtr];
-			if (!entry) throw Error("tried to initialise instance not in the map");
+			if (!entry) throw Error("tried to address Instance which isn't in #wclapMap");
 			return entry;
 		};
+		// When `WebAssembly.Function` is widely supported, we can avoid this workaround: https://github.com/WebAssembly/js-types/blob/main/proposals/js-types/Overview.md#addition-of-webassemblyfunction
+		let makeHostFunctionsNative = hostFnEntries => {
+			let fnSigs = {};
+			let imports = {proxy:{}};
+			for (let key in hostFnEntries) {
+				fnSigs[key] = hostFnEntries[key].sig;
+				imports.proxy[key] = hostFnEntries[key].hostFn;
+			}
+			let wasm = generateForwardingWasm(fnSigs);
+			// Synchronous compile & instantiate
+			let forwardingModule = new WebAssembly.Module(wasm);
+			let forwardingInstance = new WebAssembly.Instance(forwardingModule, imports);
+			// Replace host functions with exported versions
+			for (let key in hostFnEntries) {
+				hostFnEntries[key].hostFn = forwardingInstance.exports[key];
+			}
+		};
+		
 		hostImports._wclapInstance = {
 			release: instancePtr => {
 				delete this.#wclapMap[instancePtr];
 			},
 			// wclap32
+			registerHost32: (instancePtr, context, fnIndex, funcSig, funcSigLength) => {
+				let entry = getEntry(instancePtr);
+				if (entry.hadInit) throw Error("Can't register host functions after .init()");
+
+				let hostFn = this.#functionTable.get(fnIndex);
+				let wasmFnIndex = entry.functionTable.length;
+				entry.functionTable.grow(1);
+				let sig = '';
+				let sigBytes = new Uint8Array(this.memory.buffer).subarray(funcSig, funcSig + funcSigLength);
+				sigBytes.forEach(b => {
+					sig += String.fromCharCode(b);
+				});
+				entry.hostFunctions['hostFn' + hostFn] = {
+					instanceIndex: wasmFnIndex,
+					hostFn: hostFn.bind(null, context),
+					sig: sig
+				}
+				return wasmFnIndex;
+			},
 			init32: instancePtr => {
 				let entry = getEntry(instancePtr);
 				if (entry.hadInit) throw Error("WCLAP initialised twice");
 				entry.hadInit = true;
+				
+				makeHostFunctionsNative(entry.hostFunctions);
+				for (let key in entry.hostFunctions) {
+					let fnEntry = entry.hostFunctions[key];
+					entry.functionTable.set(fnEntry.instanceIndex, fnEntry.hostFn);
+				}
+				delete entry.hostFunctions;
 
 				if (typeof entry.instance.exports._initialize === 'function') {
 					entry.instance.exports._initialize();
@@ -124,6 +170,8 @@ class WclapHost {
 				hostA.set(wclapA);
 				return true;
 			},
+			// wclap64
+			init64: instancePtr => {throw Error("64-bit WCLAP not supported (yet)")}
 		};
 		
 		let wasiPromise = startWasi(config.wasi);
@@ -158,6 +206,13 @@ class WclapHost {
 
 			this.instance = await WebAssembly.instantiate(this.#config.module, hostImports);
 			this.memory = importMemory || this.instance.exports.memory;
+			
+			for (let key in this.instance.exports) {
+				let e = this.instance.exports[key];
+				if (e instanceof WebAssembly.Table && typeof e.get(e.length - 1) == 'function') {
+					this.#functionTable = e;
+				}
+			}
 
 			this.#wasi.bindToOtherMemory(this.memory);
 			if (needsInit) this.instance.exports._initialize();
@@ -223,6 +278,7 @@ class WclapHost {
 			instance: pluginInstance,
 			memory: importMemory || pluginInstance.exports.memory,
 			functionTable: functionTable,
+			hostFunctions: {}
 		};
 		if (pluginWasi) pluginWasi.bindToOtherMemory(entry.memory);
 

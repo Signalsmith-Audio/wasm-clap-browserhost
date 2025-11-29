@@ -9,6 +9,7 @@ struct HostedPlugin {
 	std::unique_ptr<wclap::MemoryArena<Instance, false>> arena;
 	
 	wclap32::Pointer<const wclap32::wclap_plugin> pluginPtr;
+	wclap32::wclap_plugin wclapPlugin;
 	
 	HostedPlugin(Instance *instance, wclap::MemoryArenaPool<Instance, false> &arenaPool) : instance(instance), arenaPool(arenaPool), arena(arenaPool.getOrCreate()) {
 	}
@@ -18,6 +19,11 @@ struct HostedPlugin {
 			instance->call(plugin.destroy, pluginPtr);
 		}
 		arenaPool.returnToPool(arena);
+	}
+
+	void init() {
+		wclapPlugin = instance->get(pluginPtr);
+		instance->call(wclapPlugin.init, pluginPtr);
 	}
 	
 	CborValue * getInfo() {

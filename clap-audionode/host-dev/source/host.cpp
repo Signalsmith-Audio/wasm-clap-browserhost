@@ -1,3 +1,8 @@
+#include <iostream>
+#ifndef LOG_EXPR
+#	define LOG_EXPR(expr) std::cout << #expr " = " << (expr) << std::endl;
+#endif
+
 /*
 	Hosts WCLAP instances, manages plugins, and exports a simpler API for use from JS
 */

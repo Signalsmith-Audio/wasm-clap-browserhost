@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>WCLAP test host</title>
+		<title>WCLAP Test Host</title>
 		<style>
 			* {
 				box-sizing: border-box;
@@ -326,7 +326,7 @@
 					numberOfOutputs: 1,
 					outputChannelCount: [2]
 				});
-				document.title = `WCLAP: ${effectNode.descriptor.name} (${effectNode.descriptor.vendor})`;
+				document.title = `${effectNode.descriptor.name} (${effectNode.descriptor.vendor}) - ` + document.title;
 				if (queryParams.get('state')) {
 					let binary = atob(queryParams.get('state').replace(/-/g, '+').replace(/_/g, '/'));
 					let array = new Uint8Array(binary.length);
