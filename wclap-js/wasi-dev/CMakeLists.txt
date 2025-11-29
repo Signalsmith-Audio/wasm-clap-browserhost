@@ -9,4 +9,5 @@ set(CMAKE_EXECUTABLE_SUFFIX .wasm)
 add_executable(wasi
 	${CMAKE_CURRENT_LIST_DIR}/wasi.cpp
 )
+target_compile_options(wasi PUBLIC "-fno-exceptions")
 target_link_options(wasi PUBLIC "-mexec-model=reactor" "-Wl,--max-memory=4294967296" "-Wl,--export-all")

@@ -1,5 +1,7 @@
 #include <cstdint>
 #include <utility>
+#include <type_traits>
+#include <vector>
 
 __attribute__((import_module("env"), import_name("memcpyToOther32")))
 extern void memcpyToOther32(uint32_t destP32, const void *src, uint32_t count);
@@ -7,15 +9,19 @@ __attribute__((import_module("env"), import_name("memcpyFromOther32")))
 extern void memcpyFromOther32(void *dest, uint32_t srcP32, uint32_t count);
 __attribute__((import_module("env"), import_name("procExit")))
 extern void jsProcExit(uint32_t code);
+__attribute__((import_module("env"), import_name("consoleLog")))
+extern void consoleLog(const char *chars, size_t length);
+__attribute__((import_module("env"), import_name("consoleError")))
+extern void consoleError(const char *chars, size_t length);
 
 template<class T>
 struct P32 {
 	uint32_t remotePointer;
 	
-	P32(uint32_t remotePointer) : remotePointer(remotePointer) {}
+	P32(uint32_t remotePointer=0) : remotePointer(remotePointer) {}
 	
-	T get(size_t index=0) const {
-		T result;
+	std::remove_cv_t<T> get(size_t index=0) const {
+		std::remove_cv_t<T> result;
 		memcpyFromOther32(&result, remotePointer + uint32_t(index*sizeof(T)), uint32_t(sizeof(T)));
 		return result;
 	}
@@ -24,10 +30,16 @@ struct P32 {
 		T value = convert;
 		memcpyToOther32(remotePointer + uint32_t(index*sizeof(T)), &value, uint32_t(sizeof(T)));
 	}
+	
+	P32 operator+(int32_t delta) {
+		return {remotePointer + delta*sizeof(T)};
+	}
+	P32 operator+=(int32_t delta) {
+		remotePointer += delta*sizeof(T);
+	}
 };
 
 using result_t = uint16_t;
-static constexpr result_t ENOTCAPABLE = 76;
 
 struct fdstat {
 	uint8_t filetype;
@@ -85,6 +97,19 @@ struct event32 {
 		uint16_t flags;
 	} fileReadWrite;
 };
+
+template<class Fn>
+void forEachIoVec(P32<const iovec32> ioBufferList, uint32_t ioBufferCount, Fn &&fn) {
+	std::vector<char> buffer;
+	for (uint32_t i = 0; i < ioBufferCount; ++i) {
+		auto vec = (ioBufferList + i).get();
+		buffer.resize(vec.length);
+		memcpyFromOther32(buffer.data(), vec.buffer.remotePointer, vec.length);
+		fn(buffer.data(), buffer.size());
+	}
+}
+
+std::vector<char> stdoutLine, stderrLine;
 
 extern "C" {
 	result_t wasi32_snapshot_preview1__args_sizes_get(P32<size_t> count, P32<size_t> bufferSize) {
@@ -170,6 +195,37 @@ extern "C" {
 		return ENOTCAPABLE;
 	}
 	result_t wasi32_snapshot_preview1__fd_write(uint32_t fd, P32<const iovec32> ioBufferList, uint32_t ioBufferCount, P32<uint32_t> bytesWritten) {
+		if (fd == 1) {
+			size_t total = 0;
+			forEachIoVec(ioBufferList, ioBufferCount, [&](const char *bytes, size_t length){
+				for (size_t i = 0; i < length; ++i) {
+					if (bytes[i] == '\n') {
+						consoleLog(stdoutLine.data(), stdoutLine.size());
+						stdoutLine.resize(0);
+					} else {
+						stdoutLine.push_back(bytes[i]);
+					}
+				}
+				total += length;
+			});
+			bytesWritten.set(uint32_t(total));
+			return 0;
+		} else if (fd == 2) {
+			size_t total = 0;
+			forEachIoVec(ioBufferList, ioBufferCount, [&](const char *bytes, size_t length){
+				for (size_t i = 0; i < length; ++i) {
+					if (bytes[i] == '\n') {
+						consoleError(stderrLine.data(), stderrLine.size());
+						stderrLine.resize(0);
+					} else {
+						stderrLine.push_back(bytes[i]);
+					}
+				}
+				total += length;
+			});
+			bytesWritten.set(uint32_t(total));
+			return 0;
+		}
 		return ENOTCAPABLE;
 	}
 	result_t wasi32_snapshot_preview1__path_create_directory(uint32_t fd, P32<const char> path, uint32_t pathLength) {

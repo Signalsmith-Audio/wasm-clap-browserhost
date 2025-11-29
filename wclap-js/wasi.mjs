@@ -86,21 +86,36 @@ class Wasi {
 		}
 
 		let wasiImplImports = {
+			wasi: {
+				'thread-spawn': threadArg => {throw Error("WASI can't spawn threads")}
+			},
 			env: {
 				memory: this.#memory,
 				memcpyToOther32: (otherP, wasiP, size) => {
-					let otherA = new Uint8Array(this.#otherModuleMemory.buffer, otherP, otherP + size);
-					let wasiA = new Uint8Array(this.#memory.buffer, wasiP, wasiP + size);
+					let otherA = new Uint8Array(this.#otherModuleMemory.buffer).subarray(otherP, otherP + size);
+					let wasiA = new Uint8Array(this.#memory.buffer).subarray(wasiP, wasiP + size);
 					otherA.set(wasiA);
 				},
 				memcpyFromOther32: (wasiP, otherP, size) => {
-					let wasiA = new Uint8Array(this.#memory.buffer, wasiP, wasiP + size);
-					let otherA = new Uint8Array(this.#otherModuleMemory.buffer, otherP, otherP + size);
+					let wasiA = new Uint8Array(this.#memory.buffer).subarray(wasiP, wasiP + size);
+					let otherA = new Uint8Array(this.#otherModuleMemory.buffer).subarray(otherP, otherP + size);
 					wasiA.set(otherA);
 				},
 				procExit() {
 					debugger;
 					throw new Error("Fatal error - but fully stopping is not supported");
+				},
+				consoleLog: (wasiP, size) => {
+					let bytes = new Uint8Array(this.#memory.buffer).subarray(wasiP, wasiP + size);
+					let string = "";
+					for (let i = 0; i < size; ++i) string += String.fromCharCode(bytes[i]);
+					console.log(string);
+				},
+				consoleError: (wasiP, size) => {
+					let bytes = new Uint8Array(this.#memory.buffer).subarray(wasiP, wasiP + size);
+					let string = "";
+					for (let i = 0; i < size; ++i) string += String.fromCharCode(bytes[i]);
+					console.error(string);
 				}
 			}
 		};
