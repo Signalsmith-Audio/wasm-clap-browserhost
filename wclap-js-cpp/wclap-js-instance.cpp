@@ -1,7 +1,7 @@
 #include "./wclap-js-instance.h"
 
-Instance * _wclapInstanceCreate(size_t index, bool is64) {
-	return new Instance(index, is64);
+Instance * _wclapInstanceCreate(bool is64) {
+	return new Instance(is64);
 }
 
 #include <vector>

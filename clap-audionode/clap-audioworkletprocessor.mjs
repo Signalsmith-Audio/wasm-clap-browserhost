@@ -37,6 +37,17 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		let bytes = new Uint8Array(buffer).slice(cborPtr, cborPtr + cborLength);
 		return CBOR.decode(bytes);
 	};
+	encodeCbor(value) {
+		let bytes = new Uint8Array(CBOR.encode(value));
+		let ptr = this.host.instance.exports.resizeCbor(bytes.length);
+
+		let buffer = this.host.memory.buffer;
+		let dataView = new DataView(buffer);
+		let cborPtr = dataView.getUint32(ptr, true);
+		let array = new Uint8Array(buffer).subarray(cborPtr, cborPtr + bytes.length);
+		array.set(bytes);
+		return ptr;
+	}
 
 	constructor(options) {
 		super();
@@ -45,20 +56,17 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			debugger;
 		};
 
-		// When passing between contexts, these get cloned with just their properties.
-		// This turns them back into the correct classes
 		(async init => {
-			this.host = await createHost(init.host, hostImports);
+			this.host = await startHost(init.host, hostImports());
 			let hostApi = this.host.instance.exports;
 			let instancePtr = await this.host.startWclap(init.wclap);
 			this.hostedPtr = hostApi.makeHosted(instancePtr);
 
 			let pluginId = init.pluginId;
 			if (!pluginId) {
-				debugger;
-				let info = this.decodeCbor(hostApi.getInfo(this.hostedPtr));
-				let pluginIndex = clapOptions.pluginIndex || 0;
-				pluginId = info.plugins[pluginIndex].id;
+				let pluginIndex = init.pluginIndex || 0;
+				let moduleInfo = this.decodeCbor(hostApi.getInfo(this.hostedPtr));
+				pluginId = moduleInfo.plugins[pluginIndex].id;
 			}
 
 			// Manage the routing entry
@@ -67,8 +75,20 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 				events: []
 			};
 			ClapAudioWorkletProcessor.#cleanup.register(this, this.routingId);
+			
+			this.pluginPtr = hostApi.createPlugin(this.hostedPtr, this.encodeCbor(pluginId));
+			if (!this.pluginPtr) {
+				throw Error("Failed to create plugin: " + pluginId);
+			}
 
-			running = true;
+			// initial message lists plugin descriptor and remote methods
+			let pluginInfo = this.decodeCbor(hostApi.getPluginInfo(this.pluginPtr));
+			this.port.postMessage(Object.assign(pluginInfo, {
+				routingId: this.routingId,
+				methods: Object.keys(this.remoteMethods),
+			}));
+
+			this.running = true;
 		})(options.processorOptions);
 
 //			let webviewStartPage = null;
@@ -102,14 +122,6 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 //				}
 //			}
 //
-//			// initial message lists plugin descriptor and remote methods
-//			this.port.postMessage({
-//				routingId: this.routingId,
-//				desc: clapPlugin.api.clap_plugin_descriptor(clapPlugin.plugin.desc),
-//				methods: Object.keys(this.remoteMethods),
-//				webview: webviewStartPage,
-//				audioPorts: {'in': this.audioPortsIn, 'out': this.audioPortsOut}
-//			});
 //		});
 //		
 //		// subsequent messages are proxied method calls

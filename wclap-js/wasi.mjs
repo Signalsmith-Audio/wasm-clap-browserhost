@@ -73,9 +73,10 @@ class Wasi {
 	
 	importObj = {};
 
-	constructor(config, memory) {
+	constructor(config, singleThreadMemory) {
+
 		this.#config = config;
-		this.#memory = config.memory || memory;
+		this.#memory = config.memory || singleThreadMemory;
 
 		let needsInit = false;
 		if (!this.#memory) {
@@ -86,14 +87,14 @@ class Wasi {
 
 		let wasiImplImports = {
 			env: {
-				memory: memory,
+				memory: this.#memory,
 				memcpyToOther32: (otherP, wasiP, size) => {
 					let otherA = new Uint8Array(this.#otherModuleMemory.buffer, otherP, otherP + size);
-					let wasiA = new Uint8Array(memory.buffer, wasiP, wasiP + size);
+					let wasiA = new Uint8Array(this.#memory.buffer, wasiP, wasiP + size);
 					otherA.set(wasiA);
 				},
 				memcpyFromOther32: (wasiP, otherP, size) => {
-					let wasiA = new Uint8Array(memory.buffer, wasiP, wasiP + size);
+					let wasiA = new Uint8Array(this.#memory.buffer, wasiP, wasiP + size);
 					let otherA = new Uint8Array(this.#otherModuleMemory.buffer, otherP, otherP + size);
 					wasiA.set(otherA);
 				},
@@ -131,12 +132,17 @@ class Wasi {
 
 let wasiModulePromise;
 
-export default async function createWasi(initObj) {
-	if (initObj?.module) return new Wasi(initObj).ready;
+export async function getWasi(initObj) {
+	if (initObj?.module) return initObj;
 
 	if (!wasiModulePromise) {
 		let wasmUrl = new URL("./wasi.wasm", import.meta.url).href;
 		wasiModulePromise = WebAssembly.compileStreaming(fetch(wasmUrl));
 	}
-	return new Wasi({module: await wasiModulePromise});
+	return {module: await wasiModulePromise};
+}
+
+export async function startWasi(initObj) {
+	if (!initObj.module) initObj = getWasi(initObj);
+	return new Wasi(initObj).ready;
 }

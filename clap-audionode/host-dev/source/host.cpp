@@ -1,0 +1,28 @@
+/*
+	Hosts WCLAP instances, manages plugins, and exports a simpler API for use from JS
+*/
+#include "./hosted-wclap.h"
+#include "./hosted-plugin.h"
+
+extern "C" {
+	HostedWclap * makeHosted(Instance *instance) {
+		return HostedWclap::create(instance);
+	}
+	void removeHosted(HostedWclap *hosted) {
+		delete hosted;
+	}
+	CborValue * getInfo(HostedWclap *hosted) {
+		return hosted->getInfo();
+	}
+
+	HostedPlugin * createPlugin(HostedWclap *hosted, CborValue *cbor) {
+		 auto pluginId = cbor->read().utf8();
+		 return HostedPlugin::create(hosted, pluginId.c_str());
+	}
+	void destroyPlugin(HostedPlugin *plugin) {
+		delete plugin;
+	}
+	CborValue * getPluginInfo(HostedPlugin *plugin) {
+		return plugin->getInfo();
+	}
+}

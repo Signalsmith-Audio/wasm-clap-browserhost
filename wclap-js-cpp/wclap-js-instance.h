@@ -7,45 +7,45 @@ Anything using this can be instantiated by `wclap-host.mjs`.  This provides the 
 
 // These are provided by `wclap-host.mjs`, and let us talk to another WebAssembly instance in the same JS context
 __attribute__((import_module("_wclapInstance"), import_name("initThread")))
-extern void _wclapInstanceInitThread(size_t jsIndex, int threadId, uint64_t startArg);
+extern void _wclapInstanceInitThread(const void *handle, int threadId, uint64_t startArg);
 
 __attribute__((import_module("_wclapInstance"), import_name("release")))
-extern void _wclapInstanceRelease(size_t jsIndex);
+extern void _wclapInstanceRelease(const void *handle);
 
 __attribute__((import_module("_wclapInstance"), import_name("init32")))
-extern uint32_t _wclapInstanceInit32(size_t jsIndex);
+extern uint32_t _wclapInstanceInit32(const void *handle);
 __attribute__((import_module("_wclapInstance"), import_name("init64")))
-extern uint64_t _wclapInstanceInit64(size_t jsIndex);
+extern uint64_t _wclapInstanceInit64(const void *handle);
 
 __attribute__((import_module("_wclapInstance"), import_name("malloc32")))
-extern uint32_t _wclapInstanceMalloc32(size_t jsIndex, uint32_t size);
+extern uint32_t _wclapInstanceMalloc32(const void *handle, uint32_t size);
 __attribute__((import_module("_wclapInstance"), import_name("malloc64")))
-extern uint64_t _wclapInstanceMalloc64(size_t jsIndex, uint64_t size);
+extern uint64_t _wclapInstanceMalloc64(const void *handle, uint64_t size);
 
 __attribute__((import_module("_wclapInstance"), import_name("memcpyToOther32")))
-extern bool _wclapInstanceMemcpyToOther32(size_t jsIndex, uint32_t destP32, const void *src, uint32_t count);
+extern bool _wclapInstanceMemcpyToOther32(const void *handle, uint32_t destP32, const void *src, uint32_t count);
 __attribute__((import_module("_wclapInstance"), import_name("memcpyToOther64")))
-extern bool _wclapInstanceMemcpyToOther64(size_t jsIndex, uint64_t destP64, const void *src, uint64_t count);
+extern bool _wclapInstanceMemcpyToOther64(const void *handle, uint64_t destP64, const void *src, uint64_t count);
 
 __attribute__((import_module("_wclapInstance"), import_name("memcpyFromOther32")))
-extern bool _wclapInstanceMemcpyFromOther32(size_t jsIndex, void *dest, uint32_t srcP32, uint32_t count);
+extern bool _wclapInstanceMemcpyFromOther32(const void *handle, void *dest, uint32_t srcP32, uint32_t count);
 __attribute__((import_module("_wclapInstance"), import_name("memcpyFromOther64")))
-extern bool _wclapInstanceMemcpyFromOther64(size_t jsIndex, void *dest, uint64_t srcP64, uint64_t count);
+extern bool _wclapInstanceMemcpyFromOther64(const void *handle, void *dest, uint64_t srcP64, uint64_t count);
 
 __attribute__((import_module("_wclapInstance"), import_name("countUntil32")))
-extern uint32_t _wclapInstanceCountUntil32(size_t jsIndex, uint32_t startP32, const void *untilPtr, size_t itemSize, size_t maxCount);
+extern uint32_t _wclapInstanceCountUntil32(const void *handle, uint32_t startP32, const void *untilPtr, size_t itemSize, size_t maxCount);
 __attribute__((import_module("_wclapInstance"), import_name("countUntil64")))
-extern uint64_t _wclapInstanceCountUntil64(size_t jsIndex, uint64_t startP64, const void *untilPtr, size_t itemSize, size_t maxCount);
+extern uint64_t _wclapInstanceCountUntil64(const void *handle, uint64_t startP64, const void *untilPtr, size_t itemSize, size_t maxCount);
 
 __attribute__((import_module("_wclapInstance"), import_name("call32")))
-extern bool _wclapInstanceCall32(size_t jsIndex, uint32_t wasmFn, void *resultPtr, const void *argsPtr, size_t argsCount);
+extern bool _wclapInstanceCall32(const void *handle, uint32_t wasmFn, void *resultPtr, const void *argsPtr, size_t argsCount);
 __attribute__((import_module("_wclapInstance"), import_name("call64")))
-extern bool _wclapInstanceCall64(size_t jsIndex, uint64_t wasmFn, void *resultPtr, const void *argsPtr, size_t argsCount);
+extern bool _wclapInstanceCall64(const void *handle, uint64_t wasmFn, void *resultPtr, const void *argsPtr, size_t argsCount);
 
 __attribute__((import_module("_wclapInstance"), import_name("registerHost32")))
-extern uint32_t _wclapInstanceRegisterHost32(size_t jsIndex, const void *fn);
+extern uint32_t _wclapInstanceRegisterHost32(const void *handle, const void *fn);
 __attribute__((import_module("_wclapInstance"), import_name("registerHost64")))
-extern uint64_t _wclapInstanceRegisterHost64(size_t jsIndex, const void *fn);
+extern uint64_t _wclapInstanceRegisterHost64(const void *handle, const void *fn);
 
 namespace js_wasm {
 	struct TaggedValue {
@@ -104,13 +104,13 @@ namespace js_wasm {
 	};
 	
 	struct WclapInstance {
-		const size_t jsIndex;
-		bool wasm64;
+		void * const handle;
+		const bool wasm64;
 		
-		WclapInstance(size_t index, bool wasm64) : jsIndex(index), wasm64(wasm64) {}
+		WclapInstance(void *handle, bool wasm64) : handle(handle), wasm64(wasm64) {}
 		WclapInstance(const WclapInstance &other) = delete;
 		~WclapInstance() {
-			_wclapInstanceRelease(jsIndex);
+			_wclapInstanceRelease(handle);
 		}
 		
 		bool is64() const {
@@ -127,28 +127,28 @@ namespace js_wasm {
 
 		// Thread-specific init - calls through to wasi_thread_start()
 		void initThread(int threadId, uint64_t startArg) {
-			_wclapInstanceInitThread(jsIndex, threadId, startArg);
+			_wclapInstanceInitThread(handle, threadId, startArg);
 		}
 		
 		//---- wclap32 ----//
 
 		wclap32::Pointer<const wclap32::wclap_plugin_entry> init32() {
-			return {_wclapInstanceInit32(jsIndex)};
+			return {_wclapInstanceInit32(handle)};
 		}
 		wclap32::Pointer<void> malloc32(uint32_t size) {
-			return {_wclapInstanceMalloc32(jsIndex, size)};
+			return {_wclapInstanceMalloc32(handle, size)};
 		}
 		template<class V>
 		bool getArray(wclap32::Pointer<V> ptr, std::remove_cv_t<V> *value, size_t count) {
-			return _wclapInstanceMemcpyFromOther32(jsIndex, value, ptr.wasmPointer, uint32_t(count*sizeof(V)));
+			return _wclapInstanceMemcpyFromOther32(handle, value, ptr.wasmPointer, uint32_t(count*sizeof(V)));
 		}
 		template<class V>
 		bool setArray(wclap32::Pointer<V> ptr, const V *value, size_t count) {
-			return _wclapInstanceMemcpyToOther32(jsIndex, ptr.wasmPointer, value, uint32_t(count*sizeof(V)));
+			return _wclapInstanceMemcpyToOther32(handle, ptr.wasmPointer, value, uint32_t(count*sizeof(V)));
 		}
 		template<class V>
 		uint32_t countUntil(wclap32::Pointer<V> ptr, const V &endValue, uint32_t maxCount) {
-			return _wclapInstanceCountUntil32(jsIndex, ptr.wasmPointer, &endValue, sizeof(V), maxCount);
+			return _wclapInstanceCountUntil32(handle, ptr.wasmPointer, &endValue, sizeof(V), maxCount);
 		}
 		template<class Return, class... Args>
 		Return call(wclap32::Function<Return, Args...> fnPtr, Args... args) {
@@ -156,7 +156,7 @@ namespace js_wasm {
 			TaggedValue taggedArgs[] = {TaggedValue::from(args)...};
 			size_t argsCount = sizeof(taggedArgs)/sizeof(TaggedValue);
 
-			_wclapInstanceCall32(jsIndex, fnPtr.wasmPointer, &taggedResult, taggedArgs, argsCount);
+			_wclapInstanceCall32(handle, fnPtr.wasmPointer, &taggedResult, taggedArgs, argsCount);
 
 			if constexpr (!std::is_void_v<Return>) {
 				Return v;
@@ -166,28 +166,28 @@ namespace js_wasm {
 		}
 		template<class Return, class ...Args>
 		wclap32::Function<Return, Args...> registerHost32(Return (*fn)(Args...)) {
-			return {_wclapInstanceRegisterHost32(jsIndex, fn)};
+			return {_wclapInstanceRegisterHost32(handle, fn)};
 		}
 
 		//---- wclap64 ----//
 
 		wclap64::Pointer<const wclap64::wclap_plugin_entry> init64() {
-			return {_wclapInstanceInit64(jsIndex)};
+			return {_wclapInstanceInit64(handle)};
 		}
 		wclap64::Pointer<void> malloc64(uint64_t size) {
-			return {_wclapInstanceMalloc64(jsIndex, size)};
+			return {_wclapInstanceMalloc64(handle, size)};
 		}
 		template<class V>
 		bool getArray(wclap64::Pointer<V> ptr, std::remove_cv_t<V> *value, size_t count) {
-			return _wclapInstanceMemcpyFromOther64(jsIndex, value, ptr.wasmPointer, uint64_t(count*sizeof(V)));
+			return _wclapInstanceMemcpyFromOther64(handle, value, ptr.wasmPointer, uint64_t(count*sizeof(V)));
 		}
 		template<class V>
 		bool setArray(wclap64::Pointer<V> ptr, const V *value, size_t count) {
-			return _wclapInstanceMemcpyToOther64(jsIndex, ptr.wasmPointer, value, uint64_t(count*sizeof(V)));
+			return _wclapInstanceMemcpyToOther64(handle, ptr.wasmPointer, value, uint64_t(count*sizeof(V)));
 		}
 		template<class V>
 		uint64_t countUntil(wclap64::Pointer<V> ptr, const V &endValue, uint64_t maxCount) {
-			return _wclapInstanceCountUntil64(jsIndex, ptr.wasmPointer, &endValue, sizeof(V), maxCount);
+			return _wclapInstanceCountUntil64(handle, ptr.wasmPointer, &endValue, sizeof(V), maxCount);
 		}
 		template<class Return, class... Args>
 		Return call(wclap64::Function<Return, Args...> fnPtr, Args... args) {
@@ -195,7 +195,7 @@ namespace js_wasm {
 			TaggedValue taggedArgs[] = {TaggedValue::from(args)...};
 			size_t argsCount = sizeof(taggedArgs)/sizeof(TaggedValue);
 
-			_wclapInstanceCall64(jsIndex, fnPtr.wasmPointer, &taggedResult, taggedArgs, argsCount);
+			_wclapInstanceCall64(handle, fnPtr.wasmPointer, &taggedResult, taggedArgs, argsCount);
 
 			Return v;
 			taggedResult.set(v);
@@ -203,7 +203,7 @@ namespace js_wasm {
 		}
 		template<class Return, class ...Args>
 		wclap64::Function<Return, Args...> registerHost64(Return (*fn)(Args...)) {
-			return {_wclapInstanceRegisterHost64(jsIndex, fn)};
+			return {_wclapInstanceRegisterHost64(handle, fn)};
 		}
 	};
 };
@@ -212,6 +212,6 @@ using Instance = wclap::Instance<js_wasm::WclapInstance>;
 
 extern "C" {
 	uint32_t _wclapInstanceGetNextIndex();
-	Instance * _wclapInstanceCreate(size_t index, bool is64);
+	Instance * _wclapInstanceCreate(bool is64);
 	char * _wclapInstanceSetPath(Instance *instance, size_t size);
 }

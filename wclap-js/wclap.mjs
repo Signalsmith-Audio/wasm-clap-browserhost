@@ -1,4 +1,4 @@
-import createWasi from "./wasi.mjs";
+import {getWasi, startWasi} from "./wasi.mjs";
 import getWclap from "./wclap-plugin.mjs";
 
 /* This exports `createHost()`, which should work for any Wasm32 host using the `wclap-js-instance` version of `Instance`.*/
@@ -88,7 +88,10 @@ class WclapHost {
 				}
 
 				let result = entry.functionTable.get(wasmFn)(...args);
-				if (typeof result == 'boolean') {
+				if (result == null) {
+					dataView.setUint8(resultPtr, 0);
+					dataView.setUint32(resultPtr + 8, 0, true);
+				} else if (typeof result == 'boolean') {
 					dataView.setUint8(resultPtr, 0);
 					dataView.setUint32(resultPtr + 8, result, true);
 				} else if (typeof result == 'number' && (result|0) == result) {
@@ -123,7 +126,7 @@ class WclapHost {
 			},
 		};
 		
-		let wasiPromise = createWasi(config.wasi);
+		let wasiPromise = startWasi(config.wasi);
 
 		this.ready = (async _ => {
 			this.#config = config;
@@ -148,7 +151,7 @@ class WclapHost {
 			Object.assign(hostImports, this.#wasi.importObj);
 
 			// wasi-threads
-			if (!hostImports.wasi) imports.wasi = {};
+			if (!hostImports.wasi) hostImports.wasi = {};
 			hostImports.wasi['thread-spawn'] = threadArg => {
 				return this.hostThreadSpawn(threadArg);
 			};
@@ -156,7 +159,7 @@ class WclapHost {
 			this.instance = await WebAssembly.instantiate(this.#config.module, hostImports);
 			this.memory = importMemory || this.instance.exports.memory;
 
-			this.#wasi.setOtherMemory(this.memory);
+			this.#wasi.bindToOtherMemory(this.memory);
 			if (needsInit) this.instance.exports._initialize();
 
 			return this;
@@ -167,8 +170,8 @@ class WclapHost {
 		return Object.assign({}, this.#config);
 	}
 	
-	/// Returns an "instance ID", which is actually an `Instance *` for the C++ host.
-	async loadWclap(initObj) {
+	/// Returns an instance pointer (`Instance *`) for the C++ host.
+	async startWclap(initObj) {
 		if (!initObj.module) initObj = getWclap(initObj);
 		let wclapImports = {};
 
@@ -193,7 +196,7 @@ class WclapHost {
 
 		let pluginWasi = null;
 		if (needsWasi) {
-			pluginWasi = await this.#wasi.copyForReassignment();
+			pluginWasi = await this.#wasi.copyForRebinding();
 			Object.assign(wclapImports, pluginWasi.importObj);
 		}
 		// wasi-threads
@@ -201,9 +204,8 @@ class WclapHost {
 		wclapImports.wasi['thread-spawn'] = threadArg => {
 			return this.pluginThreadSpawn(initObj, threadArg);
 		};
-		if (pluginWasi) pluginWasi.setOtherMemory(pluginMemory);
 
-		let pluginInstance = await WebAssembly.instantiate(wclapConfig.module, wclapImports);
+		let pluginInstance = await WebAssembly.instantiate(initObj.module, wclapImports);
 		let functionTable = null;
 		for (let name in pluginInstance.exports) {
 			if (pluginInstance.exports[name] instanceof WebAssembly.Table) {
@@ -218,24 +220,26 @@ class WclapHost {
 
 		let entry = {
 			initObj: initObj,
-			instance: instance,
+			instance: pluginInstance,
 			memory: importMemory || pluginInstance.exports.memory,
 			functionTable: functionTable,
 		};
-		if (pluginWasi) pluginWasi.setOtherMemory(entry.memory);
+		if (pluginWasi) pluginWasi.bindToOtherMemory(entry.memory);
 
+		let instancePtr = initObj.instancePtr;
 		if (needsInit) {
 			let is64 = pluginInstance.exports.clap_entry instanceof BigInt;
 if (is64) throw Error("wasm64 WCLAP isn't supported yet");
-			initObj.instancePtr = this.instance.exports._wclapInstanceCreate(is64);
+			instancePtr = this.instance.exports._wclapInstanceCreate(is64);
 			// Set the path
-			let pathBytes = new TextEncoder('utf-8').encode(wclapConfig.pluginPath);
+			let pathBytes = new TextEncoder('utf-8').encode(initObj.pluginPath);
 			let pathPtr = this.instance.exports._wclapInstanceSetPath(initObj.instancePtr, pathBytes.length);
 			new Uint8Array(this.memory.buffer).set(pathBytes, pathPtr);
 		}
-		this.#wclapMap[initObj.instancePtr] = entry;
+		this.#wclapMap[instancePtr] = entry;
+		if (initObj.memory) initObj.instancePtr = instancePtr; // only save if we're also saving the memory
 
-		return initObj.instancePtr;
+		return instancePtr;
 	}
 	
 	instanceMemory(instancePtr) {
@@ -249,12 +253,37 @@ async function startHost(initObj, hostImports) {
 }
 
 async function getHost(initObj) {
-	if (typeof initObj == 'object' && initObj?.module) return initObj;
-
 	if (typeof initObj == 'string') initObj = {url: initObj};
-	let url = new URL(initObj.url, document.baseURI).href;
-	return {
-		url: url,
-		module: await WebAssembly.compileStreaming(fetch(url))
+	if (initObj.module) return initObj;
+
+	if (!initObj.module) {
+		initObj.url = new URL(initObj.url, document.baseURI).href;
+		initObj.module = await WebAssembly.compileStreaming(fetch(initObj.url));
+	}
+	if (!initObj.wasi) initObj.wasi = await getWasi();
+	return initObj;
+}
+
+// Worklets don't have TextEncoder/TextDecoder - this polyfill isn't the most performant, but we shouldn't be doing it often in an AudioProcessorWorklet anyway
+if (!globalThis.TextEncoder) {
+	let TextCodec = globalThis.TextEncoder = globalThis.TextDecoder = function(){};
+	TextCodec.prototype.encode = str => {
+		let binaryString = unescape(encodeURIComponent(str));
+		let result = new Uint8Array(binaryString.length);
+		for (let i = 0; i < binaryString.length; ++i) {
+			result[i] = binaryString.charCodeAt(i);
+		}
+		return result;
+	};
+	TextCodec.prototype.decode = array => {
+		if (!ArrayBuffer.isView(array)) {
+			throw Error('Can only use ArrayBuffer or view with TextDecoder');
+		}
+		array = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+		let binaryString = "";
+		for (let i = 0; i < array.length; ++i) {
+			binaryString += String.fromCharCode(array[i]);
+		}
+		return decodeURIComponent(escape(binaryString));
 	};
 }
