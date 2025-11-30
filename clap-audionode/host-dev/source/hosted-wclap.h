@@ -15,6 +15,8 @@ struct HostedWclap {
 	// Host structures
 	wclap32::wclap_host host;
 	wclap32::Pointer<wclap32::wclap_host_params> paramsExtPtr;
+	wclap32::Pointer<wclap32::wclap_host_gui> guiExtPtr;
+	wclap32::Pointer<wclap32::wclap_host_webview> webviewExtPtr;
 
 	// Instance and supporting state
 	std::unique_ptr<Instance> instance;
@@ -30,33 +32,67 @@ struct HostedWclap {
 		self.instance->getArray(extensionIdPtr, extensionId, 255);
 		
 		if (!std::strcmp(extensionId, "clap.params")) return self.paramsExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.gui")) return self.paramsExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.webview/3")) return self.paramsExtPtr.cast<const void>();
 		
-		LOG_EXPR(extensionId);
+		std::cout << "Unsupported WCLAP host extension: " << extensionId << std::endl;
 		return {0}; // no extensions for now
 	}
 
 	static void hostRequestRestart32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
-LOG_EXPR("host.request_restart()");
+		if (plugin) plugin->hostRequestRestart();
 	}
 	static void hostRequestProcess32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
-LOG_EXPR("host.request_process()");
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->hostRequestProcess();
 	}
 	static void hostRequestCallback32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
-LOG_EXPR("host.request_callback()");
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->hostRequestCallback();
 	}
 
 	static void paramsRescan32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flags) {
-		auto &self = *(HostedWclap *)context;
-LOG_EXPR("host_params.rescan()");
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->paramsRescan(flags);
 	}
 	static void paramsClear32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t paramId, uint32_t flags) {
-		auto &self = *(HostedWclap *)context;
-LOG_EXPR("host_params.clear()");
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->paramsClear(paramId, flags);
 	}
 	static void paramsRequestFlush32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
-		auto &self = *(HostedWclap *)context;
-LOG_EXPR("host_params.request_flush()");
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->paramsRequestFlush();
+	}
+	
+	static void guiResizeHintsChanged32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->guiResizeHintsChanged();
+	}
+	static bool guiRequestResize32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t width, uint32_t height) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) return plugin->guiRequestResize(width, height);
+		return false;
+	}
+	static bool guiRequestShow32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) return plugin->guiRequestShow();
+		return false;
+	}
+	static bool guiRequestHide32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) return plugin->guiRequestHide();
+		return false;
+	}
+	static void guiClosed32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, bool wasDestroyed) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->guiClosed(wasDestroyed);
+	}
+	
+	static bool webviewSend32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, wclap32::Pointer<const void> buffer, uint32_t size) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) return plugin->webviewSend(buffer, size);
+		return false;
 	}
 
 	HostedWclap(Instance *instance) : instance(instance), arenaPool(instance), globalArena(arenaPool.getOrCreate()) {
@@ -76,12 +112,24 @@ LOG_EXPR("host_params.request_flush()");
 		host.request_process = instance->registerHost32(this, hostRequestRestart32);
 		host.request_callback = instance->registerHost32(this, hostRequestCallback32);
 		
+		// Host extensions - functions defined above
 		wclap32::wclap_host_params paramsExt{
 			.rescan=instance->registerHost32(this, paramsRescan32),
 			.clear=instance->registerHost32(this, paramsClear32),
 			.request_flush=instance->registerHost32(this, paramsRequestFlush32),
 		};
-		paramsExtPtr = globalScoped.copyAcross(paramsExt);
+		wclap32::wclap_host_gui guiExt{
+			.resize_hints_changed=instance->registerHost32(this, guiResizeHintsChanged32),
+			.request_resize=instance->registerHost32(this, guiRequestResize32),
+			.request_show=instance->registerHost32(this, guiRequestShow32),
+			.request_hide=instance->registerHost32(this, guiRequestHide32),
+			.closed=instance->registerHost32(this, guiClosed32),
+		};
+		guiExtPtr = globalScoped.copyAcross(guiExt);
+		wclap32::wclap_host_webview webviewExt{
+			.send=instance->registerHost32(this, webviewSend32),
+		};
+		webviewExtPtr = globalScoped.copyAcross(webviewExt);
 
 		globalScoped.commit(); // Save this stuff for the WCLAP lifetime
 		
