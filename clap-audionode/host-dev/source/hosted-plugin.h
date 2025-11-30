@@ -51,16 +51,14 @@ struct HostedPlugin {
 		LOG_EXPR("host.request_callback()");
 	}
 	
-	void paramsRescan(uint32_t flags) {
-		LOG_EXPR("host_params.rescan()");
+	bool audioPortsIsRescanFlagSupported(uint32_t flag) {
+		LOG_EXPR("host_audio_ports.is_rescan_flag_supported()");
+		return false;
 	}
-	void paramsClear(uint32_t paramId, uint32_t flags) {
-		LOG_EXPR("host_params.clear()");
+	void audioPortsRescan(uint32_t flag) {
+		LOG_EXPR("host_audio_ports.rescan()");
 	}
-	void paramsRequestFlush() {
-		LOG_EXPR("host_params.request_flush()");
-	}
-	
+		
 	void guiResizeHintsChanged() {
 		LOG_EXPR("host_gui.resize_hints_changed()");
 	}
@@ -81,6 +79,36 @@ struct HostedPlugin {
 		return false;
 	}
 	
+	void latencyChanged() {
+		LOG_EXPR("host_latency.changed()");
+	}
+
+	uint32_t notePortsSupportedDialects() {
+		LOG_EXPR("host_note_ports.supported_dialects()");
+		return 0;
+	}
+	void notePortsRescan(uint32_t flags) {
+		LOG_EXPR("host_note_ports.rescan()");
+	}
+
+	void paramsRescan(uint32_t flags) {
+		LOG_EXPR("host_params.rescan()");
+	}
+	void paramsClear(uint32_t paramId, uint32_t flags) {
+		LOG_EXPR("host_params.clear()");
+	}
+	void paramsRequestFlush() {
+		LOG_EXPR("host_params.request_flush()");
+	}
+	
+	void stateMarkDirty() {
+		LOG_EXPR("host_state.mark_dirty()");
+	}
+
+	void tailChanged() {
+		LOG_EXPR("host_tail.changed()");
+	}
+
 	bool webviewSend(wclap32::Pointer<const void> buffer, uint32_t size) {
 		LOG_EXPR("host_webview.send()");
 		return false;

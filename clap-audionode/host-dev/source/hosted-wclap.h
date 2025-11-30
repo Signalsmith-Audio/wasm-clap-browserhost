@@ -14,8 +14,13 @@ struct HostedWclap {
 
 	// Host structures
 	wclap32::wclap_host host;
-	wclap32::Pointer<wclap32::wclap_host_params> paramsExtPtr;
+	wclap32::Pointer<wclap32::wclap_host_audio_ports> audioPortsExtPtr;
 	wclap32::Pointer<wclap32::wclap_host_gui> guiExtPtr;
+	wclap32::Pointer<wclap32::wclap_host_latency> latencyExtPtr;
+	wclap32::Pointer<wclap32::wclap_host_note_ports> notePortsExtPtr;
+	wclap32::Pointer<wclap32::wclap_host_params> paramsExtPtr;
+	wclap32::Pointer<wclap32::wclap_host_state> stateExtPtr;
+	wclap32::Pointer<wclap32::wclap_host_tail> tailExtPtr;
 	wclap32::Pointer<wclap32::wclap_host_webview> webviewExtPtr;
 
 	// Instance and supporting state
@@ -31,8 +36,13 @@ struct HostedWclap {
 		char extensionId[256] = {};
 		self.instance->getArray(extensionIdPtr, extensionId, 255);
 		
-		if (!std::strcmp(extensionId, "clap.params")) return self.paramsExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.audio-ports")) return self.audioPortsExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.gui")) return self.paramsExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.latency")) return self.latencyExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.note-ports")) return self.notePortsExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.params")) return self.paramsExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.state")) return self.stateExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.tail")) return self.tailExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.webview/3")) return self.paramsExtPtr.cast<const void>();
 		
 		std::cout << "Unsupported WCLAP host extension: " << extensionId << std::endl;
@@ -52,19 +62,16 @@ struct HostedWclap {
 		if (plugin) plugin->hostRequestCallback();
 	}
 
-	static void paramsRescan32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flags) {
+	static bool audioPortsIsRescanFlagSupported32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flag) {
 		auto *plugin = getPlugin(context, host);
-		if (plugin) plugin->paramsRescan(flags);
+		if (plugin) return plugin->audioPortsIsRescanFlagSupported(flag);
+		return false;
 	}
-	static void paramsClear32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t paramId, uint32_t flags) {
+	static void audioPortsRescan32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flags) {
 		auto *plugin = getPlugin(context, host);
-		if (plugin) plugin->paramsClear(paramId, flags);
+		if (plugin) plugin->audioPortsRescan(flags);
 	}
-	static void paramsRequestFlush32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
-		auto *plugin = getPlugin(context, host);
-		if (plugin) plugin->paramsRequestFlush();
-	}
-	
+
 	static void guiResizeHintsChanged32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->guiResizeHintsChanged();
@@ -89,6 +96,44 @@ struct HostedWclap {
 		if (plugin) plugin->guiClosed(wasDestroyed);
 	}
 	
+	static void latencyChanged32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->latencyChanged();
+	}
+	
+	static uint32_t notePortsSupportedDialects32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) return plugin->notePortsSupportedDialects();
+		return 0;
+	}
+	static void notePortsRescan32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flags) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->notePortsRescan(flags);
+	}
+
+	static void paramsRescan32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flags) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->paramsRescan(flags);
+	}
+	static void paramsClear32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t paramId, uint32_t flags) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->paramsClear(paramId, flags);
+	}
+	static void paramsRequestFlush32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->paramsRequestFlush();
+	}
+	
+	static void stateMarkDirty32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->stateMarkDirty();
+	}
+
+	static void tailChanged32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->tailChanged();
+	}
+
 	static bool webviewSend32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, wclap32::Pointer<const void> buffer, uint32_t size) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) return plugin->webviewSend(buffer, size);
@@ -101,8 +146,9 @@ struct HostedWclap {
 		// Set up all the host structures we'll need later
 		// This registers all the host methods, before the instance gets locked by `.init()`
 		auto globalScoped = globalArena->scoped();
-		// Host is a template - the `.host_data` will get filled in later, as an index into `pluginList`
+		// Host is a template - we don't store it here, but separately for each plugin
 		host.wclap_version = {1, 2, 7};
+		host.host_data = {0}; // this will get filled in later, as an index into `pluginList`
 		host.name = globalScoped.writeString("CLAP AudioNode (WCLAP host)");
 		host.vendor = globalScoped.writeString("Signalsmith Audio");
 		host.url = globalScoped.writeString("https://github.com/Signalsmith-Audio/wasm-clap-browserhost");
@@ -113,23 +159,38 @@ struct HostedWclap {
 		host.request_callback = instance->registerHost32(this, hostRequestCallback32);
 		
 		// Host extensions - functions defined above
-		wclap32::wclap_host_params paramsExt{
-			.rescan=instance->registerHost32(this, paramsRescan32),
-			.clear=instance->registerHost32(this, paramsClear32),
-			.request_flush=instance->registerHost32(this, paramsRequestFlush32),
-		};
-		wclap32::wclap_host_gui guiExt{
+		audioPortsExtPtr = globalScoped.copyAcross(wclap32::wclap_host_audio_ports{
+			.is_rescan_flag_supported=instance->registerHost32(this, audioPortsIsRescanFlagSupported32),
+			.rescan=instance->registerHost32(this, audioPortsRescan32),
+		});
+		guiExtPtr = globalScoped.copyAcross(wclap32::wclap_host_gui{
 			.resize_hints_changed=instance->registerHost32(this, guiResizeHintsChanged32),
 			.request_resize=instance->registerHost32(this, guiRequestResize32),
 			.request_show=instance->registerHost32(this, guiRequestShow32),
 			.request_hide=instance->registerHost32(this, guiRequestHide32),
 			.closed=instance->registerHost32(this, guiClosed32),
-		};
-		guiExtPtr = globalScoped.copyAcross(guiExt);
-		wclap32::wclap_host_webview webviewExt{
+		});
+		latencyExtPtr = globalScoped.copyAcross(wclap32::wclap_host_latency{
+			.changed=instance->registerHost32(this, latencyChanged32),
+		});
+		notePortsExtPtr = globalScoped.copyAcross(wclap32::wclap_host_note_ports{
+			.supported_dialects=instance->registerHost32(this, notePortsSupportedDialects32),
+			.rescan=instance->registerHost32(this, notePortsRescan32),
+		});
+		paramsExtPtr = globalScoped.copyAcross(wclap32::wclap_host_params{
+			.rescan=instance->registerHost32(this, paramsRescan32),
+			.clear=instance->registerHost32(this, paramsClear32),
+			.request_flush=instance->registerHost32(this, paramsRequestFlush32),
+		});
+		stateExtPtr = globalScoped.copyAcross(wclap32::wclap_host_state{
+			.mark_dirty=instance->registerHost32(this, stateMarkDirty32),
+		});
+		tailExtPtr = globalScoped.copyAcross(wclap32::wclap_host_tail{
+			.changed=instance->registerHost32(this, tailChanged32),
+		});
+		webviewExtPtr = globalScoped.copyAcross(wclap32::wclap_host_webview{
 			.send=instance->registerHost32(this, webviewSend32),
-		};
-		webviewExtPtr = globalScoped.copyAcross(webviewExt);
+		});
 
 		globalScoped.commit(); // Save this stuff for the WCLAP lifetime
 		
