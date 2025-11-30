@@ -2,6 +2,7 @@
 
 #include "./common.h"
 #include "./hosted-plugin.h"
+#include "wclap/index-lookup.hpp"
 
 #include <memory>
 #include <vector>
@@ -13,27 +14,29 @@ struct HostedWclap {
 
 	// Host structures
 	wclap32::wclap_host host;
+	wclap32::Pointer<wclap32::wclap_host_params> paramsExtPtr;
 
+	// Instance and supporting state
 	std::unique_ptr<Instance> instance;
 	wclap::MemoryArenaPool<Instance, false> arenaPool;
 	std::unique_ptr<wclap::MemoryArena<Instance, false>> globalArena;
 	
-	std::shared_mutex mutex;
-	std::vector<std::unique_ptr<HostedPlugin>> pluginList;
-	
+	wclap::IndexLookup<HostedPlugin> pluginLookup;
 	wclap32::Pointer<wclap32::wclap_plugin_factory> pluginFactoryPtr;
-	wclap32::wclap_plugin_factory pluginFactory;
 	
 	static wclap32::Pointer<const void> hostGetExtension32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, wclap32::Pointer<const char> extensionIdPtr) {
 		auto &self = *(HostedWclap *)context;
 		char extensionId[256] = {};
 		self.instance->getArray(extensionIdPtr, extensionId, 255);
 		
+		if (!std::strcmp(extensionId, "clap.params")) return self.paramsExtPtr.cast<const void>();
+		
 		LOG_EXPR(extensionId);
 		return {0}; // no extensions for now
 	}
 
 	static void hostRequestRestart32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+		auto *plugin = getPlugin(context, host);
 LOG_EXPR("host.request_restart()");
 	}
 	static void hostRequestProcess32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
@@ -43,6 +46,18 @@ LOG_EXPR("host.request_process()");
 LOG_EXPR("host.request_callback()");
 	}
 
+	static void paramsRescan32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flags) {
+		auto &self = *(HostedWclap *)context;
+LOG_EXPR("host_params.rescan()");
+	}
+	static void paramsClear32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t paramId, uint32_t flags) {
+		auto &self = *(HostedWclap *)context;
+LOG_EXPR("host_params.clear()");
+	}
+	static void paramsRequestFlush32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+		auto &self = *(HostedWclap *)context;
+LOG_EXPR("host_params.request_flush()");
+	}
 
 	HostedWclap(Instance *instance) : instance(instance), arenaPool(instance), globalArena(arenaPool.getOrCreate()) {
 		if (instance->is64()) return;
@@ -60,6 +75,13 @@ LOG_EXPR("host.request_callback()");
 		host.request_restart = instance->registerHost32(this, hostRequestRestart32);
 		host.request_process = instance->registerHost32(this, hostRequestRestart32);
 		host.request_callback = instance->registerHost32(this, hostRequestCallback32);
+		
+		wclap32::wclap_host_params paramsExt{
+			.rescan=instance->registerHost32(this, paramsRescan32),
+			.clear=instance->registerHost32(this, paramsClear32),
+			.request_flush=instance->registerHost32(this, paramsRequestFlush32),
+		};
+		paramsExtPtr = globalScoped.copyAcross(paramsExt);
 
 		globalScoped.commit(); // Save this stuff for the WCLAP lifetime
 		
@@ -76,7 +98,6 @@ LOG_EXPR("host.request_callback()");
 		pluginFactoryPtr = instance->call(entry.get_factory, scoped.writeString("clap.plugin-factory"))
 			.cast<wclap32::wclap_plugin_factory>();
 		if (!pluginFactoryPtr) return;
-		pluginFactory = instance->get(pluginFactoryPtr);
 
 		ok = true;
 	}
@@ -116,6 +137,7 @@ LOG_EXPR("host.request_callback()");
 		cbor.addUtf8("plugins");
 		cbor.openArray();
 		
+		auto pluginFactory = instance->get(pluginFactoryPtr);
 		auto count = instance->call(pluginFactory.get_plugin_count, pluginFactoryPtr);
 		for (uint32_t i = 0; i < count; ++i) {
 			auto ptr = instance->call(pluginFactory.get_plugin_descriptor, pluginFactoryPtr, i);
@@ -129,40 +151,37 @@ LOG_EXPR("host.request_callback()");
 		return cborValue();
 	}
 	
+	static HostedPlugin * getPlugin(void *context, wclap32::Pointer<const wclap32::wclap_host> hostPtr) {
+		auto &self = *(HostedWclap *)context;
+		wclap32::Pointer<wclap32::Pointer<void>> hostDataPtr = {hostPtr.wasmPointer + offsetof(wclap32::wclap_host, host_data)};
+		wclap32::Pointer<void> hostData = self.instance->get(hostDataPtr);
+		return self.pluginLookup.get(int32_t(hostData.wasmPointer));
+	}
+	
 	HostedPlugin * createPlugin(const char *pluginId) {
-		auto arena = arenaPool.getOrCreate();
-		std::unique_lock guard{mutex};
-		
-		// Find a plugin-list entry
-		size_t pluginIndex = pluginList.size();
-		for (size_t i = 0; i < pluginList.size(); ++i) {
-			if (!pluginList[i]) { // entries get nulled, not removed, so we search for an empty one first
-				pluginIndex = i;
-				break;
-			}
-		}
-		if (pluginIndex >= pluginList.size()) pluginList.emplace_back(nullptr);
-		pluginList[pluginIndex] = std::unique_ptr<HostedPlugin>{new HostedPlugin(instance.get(), arenaPool)};
-		auto &plugin = *pluginList[pluginIndex];
-		
-		host.host_data = {uint32_t(pluginIndex)};
-		{
-			// Write the WCLAP host structures to the plugin's memory arena
-			auto scoped = plugin.arena->scoped();
-			auto hostPtr = scoped.copyAcross(host);
-			scoped.commit(); // keep that host for the lifetime of the plugin
+		auto scoped = arenaPool.scoped();
 
-			// Attempt to actually create the plugin using the plugin factory
-			plugin.pluginPtr = instance->call(pluginFactory.create_plugin, pluginFactoryPtr, hostPtr, scoped.writeString(pluginId));
-		}
-
-		if (!plugin.pluginPtr) {
+		// Write the host structures into WCLAP memory
+		auto hostPtr = scoped.copyAcross(host);
+		// Attempt to actually create the plugin using the plugin factory
+		auto pluginFactory = instance->get(pluginFactoryPtr);
+		auto pluginPtr = instance->call(pluginFactory.create_plugin, pluginFactoryPtr, hostPtr, scoped.writeString(pluginId));
+		if (!pluginPtr) {
 			std::cerr << "Failed to create WCLAP plugin: " << pluginId << "\n";
-			pluginList[pluginIndex] = nullptr;
 			return nullptr;
 		}
+
+		// `scoped.commit()` keeps the host structures above for the plugin's lifetime, and also claims the arena
+		auto *plugin = new HostedPlugin(pluginPtr, instance.get(), scoped.commit());
+		uint32_t pluginIndex = plugin->pluginIndex = pluginLookup.retain(plugin);
+		
+		// Write the plugin index into the `host.host_data` pointer
+		wclap32::Pointer<wclap32::Pointer<void>> hostDataPtr = {hostPtr.wasmPointer + offsetof(wclap32::wclap_host, host_data)};
+		wclap32::Pointer<void> indexAsPointer{pluginIndex};
+		instance->set(hostDataPtr, indexAsPointer);
+		
 		std::cout << "Created WCLAP plugin: " << pluginId << "\n";
-		plugin.init();
-		return pluginList[pluginIndex].get();
+		plugin->init();
+		return plugin;
 	}
 };

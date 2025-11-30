@@ -4,21 +4,23 @@
 
 // A WCLAP plugin and its host
 struct HostedPlugin {
+	uint32_t pluginIndex = uint32_t(-1);
+
 	Instance *instance;
-	wclap::MemoryArenaPool<Instance, false> &arenaPool;
-	std::unique_ptr<wclap::MemoryArena<Instance, false>> arena;
-	
+	using Arena = wclap::MemoryArena<Instance, false>;
+	using ArenaPtr = std::unique_ptr<Arena>;
+	ArenaPtr arena;
+		
 	wclap32::Pointer<const wclap32::wclap_plugin> pluginPtr;
 	wclap32::wclap_plugin wclapPlugin;
 	
-	HostedPlugin(Instance *instance, wclap::MemoryArenaPool<Instance, false> &arenaPool) : instance(instance), arenaPool(arenaPool), arena(arenaPool.getOrCreate()) {
-	}
+	HostedPlugin(wclap32::Pointer<const wclap32::wclap_plugin> pluginPtr, Instance *instance, ArenaPtr arena) : pluginPtr(pluginPtr), instance(instance), arena(std::move(arena)) {}
 	~HostedPlugin() {
 		if (pluginPtr) {
 			auto plugin = instance->get(pluginPtr);
 			instance->call(plugin.destroy, pluginPtr);
 		}
-		arenaPool.returnToPool(arena);
+		arena->pool.returnToPool(arena);
 	}
 
 	void init() {

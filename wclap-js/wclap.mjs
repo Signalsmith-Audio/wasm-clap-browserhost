@@ -37,17 +37,16 @@ class WclapHost {
 			let fnSigs = {};
 			let imports = {proxy:{}};
 			for (let key in hostFnEntries) {
-				fnSigs[key] = hostFnEntries[key].sig;
-				imports.proxy[key] = hostFnEntries[key].hostFn;
+				let entry = hostFnEntries[key];
+				fnSigs[key] = entry.sig;
+				let hostFn = this.#functionTable.get(entry.hostIndex);
+				imports.proxy[key] = hostFn.bind(null, entry.context);
 			}
 			let wasm = generateForwardingWasm(fnSigs);
 			// Synchronous compile & instantiate
 			let forwardingModule = new WebAssembly.Module(wasm);
 			let forwardingInstance = new WebAssembly.Instance(forwardingModule, imports);
-			// Replace host functions with exported versions
-			for (let key in hostFnEntries) {
-				hostFnEntries[key].hostFn = forwardingInstance.exports[key];
-			}
+			return forwardingInstance.exports;
 		};
 		
 		hostImports._wclapInstance = {
@@ -59,7 +58,6 @@ class WclapHost {
 				let entry = getEntry(instancePtr);
 				if (entry.hadInit) throw Error("Can't register host functions after .init()");
 
-				let hostFn = this.#functionTable.get(fnIndex);
 				let wasmFnIndex = entry.functionTable.length;
 				entry.functionTable.grow(1);
 				let sig = '';
@@ -67,9 +65,10 @@ class WclapHost {
 				sigBytes.forEach(b => {
 					sig += String.fromCharCode(b);
 				});
-				entry.hostFunctions['hostFn' + hostFn] = {
+				entry.hostFunctions['hostFn' + fnIndex] = {
 					instanceIndex: wasmFnIndex,
-					hostFn: hostFn.bind(null, context),
+					hostIndex: fnIndex,
+					context: context,
 					sig: sig
 				}
 				return wasmFnIndex;
@@ -79,10 +78,10 @@ class WclapHost {
 				if (entry.hadInit) throw Error("WCLAP initialised twice");
 				entry.hadInit = true;
 				
-				makeHostFunctionsNative(entry.hostFunctions);
+				let nativeHostFns = makeHostFunctionsNative(entry.hostFunctions);
 				for (let key in entry.hostFunctions) {
 					let fnEntry = entry.hostFunctions[key];
-					entry.functionTable.set(fnEntry.instanceIndex, fnEntry.hostFn);
+					entry.functionTable.set(fnEntry.instanceIndex, nativeHostFns[key]);
 				}
 				delete entry.hostFunctions;
 
