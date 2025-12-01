@@ -110,9 +110,14 @@ class WclapHost {
 				}
 				return maxCount;
 			},
-			call32: (instancePtr, wasmFn, resultPtr, argsPtr, argsCount) => {
+			call32: (instancePtr, wasmFn, isPtrToFn, resultPtr, argsPtr, argsCount) => {
 				let entry = getEntry(instancePtr);
 				if (!entry.hadInit) throw Error("WCLAP function called before initialisation");
+
+				if (isPtrToFn) { // not a function index, but a pointer to one - used to avoid a round-trip just to get the function pointer
+					let entryDataView = new DataView(entry.memory.buffer);
+					wasmFn = entryDataView.getUint32(wasmFn, true);
+				}
 
 				let dataView = new DataView(this.memory.buffer);
 				let args = [];
@@ -227,6 +232,8 @@ class WclapHost {
 	/// Returns an instance pointer (`Instance *`) for the C++ host.
 	async startWclap(initObj) {
 		if (!initObj.module) initObj = getWclap(initObj);
+		initObj = Object.assign({}, initObj);
+
 		let wclapImports = {};
 
 		let importMemory = initObj.memory;
@@ -288,7 +295,7 @@ if (is64) throw Error("wasm64 WCLAP isn't supported yet");
 			instancePtr = this.instance.exports._wclapInstanceCreate(is64);
 			// Set the path
 			let pathBytes = new TextEncoder('utf-8').encode(initObj.pluginPath);
-			let pathPtr = this.instance.exports._wclapInstanceSetPath(initObj.instancePtr, pathBytes.length);
+			let pathPtr = this.instance.exports._wclapInstanceSetPath(instancePtr, pathBytes.length);
 			new Uint8Array(this.memory.buffer).set(pathBytes, pathPtr);
 		}
 		this.#wclapMap[instancePtr] = entry;

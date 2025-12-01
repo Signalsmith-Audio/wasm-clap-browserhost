@@ -39,14 +39,16 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 	};
 	encodeCbor(value) {
 		let bytes = new Uint8Array(CBOR.encode(value));
+		return this.sendBytes(bytes, true);
+	}
+	sendBytes(bytes, returnCbor) {
 		let ptr = this.host.instance.exports.resizeCbor(bytes.length);
-
 		let buffer = this.host.memory.buffer;
 		let dataView = new DataView(buffer);
-		let cborPtr = dataView.getUint32(ptr, true);
-		let array = new Uint8Array(buffer).subarray(cborPtr, cborPtr + bytes.length);
+		let bufferPtr = dataView.getUint32(ptr, true);
+		let array = new Uint8Array(buffer).subarray(bufferPtr, bufferPtr + bytes.length);
 		array.set(bytes);
-		return ptr;
+		return returnCbor ? ptr : bufferPtr;
 	}
 
 	constructor(options) {
@@ -82,73 +84,36 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			}
 
 			// initial message lists plugin descriptor and remote methods
-			let pluginInfo = this.decodeCbor(hostApi.getPluginInfo(this.pluginPtr));
+			let pluginInfo = this.decodeCbor(hostApi.pluginGetInfo(this.pluginPtr));
 			this.port.postMessage(Object.assign(pluginInfo, {
 				routingId: this.routingId,
 				methods: Object.keys(this.remoteMethods),
 			}));
 
 			this.running = true;
-		})(options.processorOptions);
 
-//			let webviewStartPage = null;
-//			let webviewExt = this.clapPlugin.ext['clap.webview/3'];
-//			if (webviewExt) {
-//				let buffer = this.clapPlugin.api.tempBytes(2048);
-//				let length = webviewExt.get_uri(buffer, 2048);
-//				if (length > 0 || length < 2048) {
-//					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
-//				}
-//			} else if (webviewExt = this.clapPlugin.ext['clap.webview/2']) {
-//				let buffer = this.clapPlugin.api.tempBytes(2048);
-//				let length = webviewExt.get_uri(buffer, 2048);
-//				if (length > 0 || length < 2048) {
-//					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
-//					// Relative paths converted into `file://` URIs
-//					if (!/^[a-z0-9_-]+\:/.test(webviewStartPage)) {
-//						if (webviewStartPage[0] != '/') webviewStartPage = "/" + webviewStartPage;
-//						webviewStartPage = "file://" + module.vfsPath + webviewStartPage;
-//					}
-//				}
-//			} else if (webviewExt = this.clapPlugin.ext['clap.webview/1']) {
-//				let buffer = this.clapPlugin.api.tempBytes(2048);
-//				if (webviewExt.provide_starting_uri(buffer, 2048)) {
-//					webviewStartPage = this.clapPlugin.api.fromArg(this.clapPlugin.api.string, buffer);
-//					// Relative paths converted into `file://` URIs
-//					if (!/^[a-z0-9_-]+\:/.test(webviewStartPage)) {
-//						if (webviewStartPage[0] != '/') webviewStartPage = "/" + webviewStartPage;
-//						webviewStartPage = "file://" + module.vfsPath + webviewStartPage;
-//					}
-//				}
-//			}
-//
-//		});
-//		
-//		// subsequent messages are proxied method calls
-//		this.port.onmessage = async event => {
-//			if (this.fatalError) return;
-//			
-//			let data = event.data;
-//			if (data instanceof ArrayBuffer) {
-//				let webviewExt = this.clapPlugin.ext['clap.webview/3'] || this.clapPlugin.ext['clap.webview/2'] || this.clapPlugin.ext['clap.webview/1'];
-//				if (webviewExt) {
-//					let buffer = this.clapPlugin.api.tempTyped(Uint8Array, data.byteLength);
-//					buffer.set(new Uint8Array(data));
-//					webviewExt.receive(buffer, buffer.length);
-//				}
-//				return;
-//			}
-//			let [requestId, method, args] = data;
-//
-//			try {
-//				let result = await this.remoteMethods[method].call(this, ...args);
-//				this.port.postMessage([requestId, null, result]);
-//				this.mainThreadCallbackIfNeeded();
-//			} catch (e) {
-//				this.failWithError(e);
-//				this.port.postMessage([requestId, e]);
-//			}
-//		};
+			// subsequent messages are either proxied method calls, or ArrayBuffer messages from the webview
+			this.port.onmessage = async event => {
+				if (this.fatalError) return;
+				
+				let data = event.data;
+				if (data instanceof ArrayBuffer) {
+					let bytes = new Uint8Array(data);
+					hostApi.pluginMessage(this.pluginPtr, this.sendBytes(bytes), bytes.length);
+					return;
+				}
+				let [requestId, method, args] = data;
+
+				try {
+					let result = await this.remoteMethods[method].call(this, ...args);
+					this.port.postMessage([requestId, null, result]);
+					this.mainThreadCallbackIfNeeded();
+				} catch (e) {
+					this.failWithError(e);
+					this.port.postMessage([requestId, e]);
+				}
+			};
+		})(options.processorOptions);
 	}
 
 	fatalError = null;

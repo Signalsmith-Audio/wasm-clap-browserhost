@@ -13,6 +13,7 @@ struct HostedPlugin {
 		
 	wclap32::Pointer<const wclap32::wclap_plugin> pluginPtr;
 	wclap32::wclap_plugin wclapPlugin;
+	wclap32::Pointer<const wclap32::wclap_plugin_webview> webviewExtPtr;
 	
 	HostedPlugin(wclap32::Pointer<const wclap32::wclap_plugin> pluginPtr, Instance *instance, ArenaPtr arena) : pluginPtr(pluginPtr), instance(instance), arena(std::move(arena)) {}
 	~HostedPlugin() {
@@ -24,23 +25,40 @@ struct HostedPlugin {
 	}
 
 	void init() {
+		auto scoped = arena->scoped();
 		wclapPlugin = instance->get(pluginPtr);
 		instance->call(wclapPlugin.init, pluginPtr);
+		webviewExtPtr = instance->call(wclapPlugin.get_extension, pluginPtr, scoped.writeString("clap.webview/3")).cast<wclap32::wclap_plugin_webview>();
 	}
 	
 	CborValue * getInfo() {
-		auto plugin = instance->get(pluginPtr);
-		auto descriptor = instance->get(plugin.desc);
-	
+		auto scoped = arena->scoped();
 		auto cbor = getCbor();
 		cbor.openMap();
+
 		cbor.addUtf8("desc");
-		writeDescriptorCbor(instance, cbor, descriptor);
+		writeDescriptorCbor(instance, cbor, instance->get(wclapPlugin.desc));
+
+		cbor.addUtf8("webview");
+		if (webviewExtPtr) {
+			auto webviewExt = instance->get(webviewExtPtr);
+			auto buffer = scoped.array<char>(2048);
+			auto length = instance->call(webviewExt.get_uri, pluginPtr, buffer, 2047);
+			if (length <= 0 || length >= 2048) {
+				cbor.addNull();
+			} else {
+				char str[2048] = "";
+				instance->getArray(buffer, str, 2047);
+				cbor.addUtf8(str);
+			}
+		} else {
+			cbor.addNull();
+		}
+
 		cbor.close();
-		
 		return cborValue();
 	}
-	
+
 	void hostRequestRestart() {
 		LOG_EXPR("host.request_restart()");
 	}
@@ -112,5 +130,16 @@ struct HostedPlugin {
 	bool webviewSend(wclap32::Pointer<const void> buffer, uint32_t size) {
 		LOG_EXPR("host_webview.send()");
 		return false;
+	}
+	void message(unsigned char *bytes, uint32_t length) {
+		if (!webviewExtPtr) return;
+		auto webviewExt = instance->get(webviewExtPtr);
+
+		// TODO: send directly to the Instance's memory, instead of bouncing through the host memory
+		auto scoped = arena->scoped();
+		auto ptr = scoped.array<unsigned char>(length);
+		instance->setArray(ptr, bytes, length);
+
+		instance->call(webviewExt.receive, pluginPtr, ptr.cast<const void>(), length);
 	}
 };

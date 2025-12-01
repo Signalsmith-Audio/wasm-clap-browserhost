@@ -38,9 +38,9 @@ __attribute__((import_module("_wclapInstance"), import_name("countUntil64")))
 extern uint64_t _wclapInstanceCountUntil64(const void *handle, uint64_t startP64, const void *untilPtr, size_t itemSize, size_t maxCount);
 
 __attribute__((import_module("_wclapInstance"), import_name("call32")))
-extern bool _wclapInstanceCall32(const void *handle, uint32_t wasmFn, void *resultPtr, const void *argsPtr, size_t argsCount);
+extern bool _wclapInstanceCall32(const void *handle, uint32_t wasmFn, bool isPtrToFn, void *resultPtr, const void *argsPtr, size_t argsCount);
 __attribute__((import_module("_wclapInstance"), import_name("call64")))
-extern bool _wclapInstanceCall64(const void *handle, uint64_t wasmFn, void *resultPtr, const void *argsPtr, size_t argsCount);
+extern bool _wclapInstanceCall64(const void *handle, uint64_t wasmFn, bool isPtrToFn, void *resultPtr, const void *argsPtr, size_t argsCount);
 
 __attribute__((import_module("_wclapInstance"), import_name("registerHost32")))
 extern uint32_t _wclapInstanceRegisterHost32(const void *handle, void *context, size_t fn, const char *sig, size_t sigLength);
@@ -177,7 +177,21 @@ namespace js_wasm {
 			TaggedValue taggedArgs[] = {TaggedValue::from(args)...};
 			size_t argsCount = sizeof(taggedArgs)/sizeof(TaggedValue);
 
-			_wclapInstanceCall32(handle, fnPtr.wasmPointer, &taggedResult, taggedArgs, argsCount);
+			_wclapInstanceCall32(handle, fnPtr.wasmPointer, false, &taggedResult, taggedArgs, argsCount);
+
+			if constexpr (!std::is_void_v<Return>) {
+				Return v;
+				taggedResult.set(v);
+				return v;
+			}
+		}
+		template<class Return, class... Args>
+		Return callAt(wclap32::Pointer<wclap32::Function<Return, Args...>> fnPtrPtr, Args... args) {
+			TaggedValue taggedResult;
+			TaggedValue taggedArgs[] = {TaggedValue::from(args)...};
+			size_t argsCount = sizeof(taggedArgs)/sizeof(TaggedValue);
+
+			_wclapInstanceCall32(handle, fnPtrPtr.wasmPointer, true, &taggedResult, taggedArgs, argsCount);
 
 			if constexpr (!std::is_void_v<Return>) {
 				Return v;
@@ -217,7 +231,19 @@ namespace js_wasm {
 			TaggedValue taggedArgs[] = {TaggedValue::from(args)...};
 			size_t argsCount = sizeof(taggedArgs)/sizeof(TaggedValue);
 
-			_wclapInstanceCall64(handle, fnPtr.wasmPointer, &taggedResult, taggedArgs, argsCount);
+			_wclapInstanceCall64(handle, fnPtr.wasmPointer, false, &taggedResult, taggedArgs, argsCount);
+
+			Return v;
+			taggedResult.set(v);
+			return v;
+		}
+		template<class Return, class... Args>
+		Return callAt(wclap64::Pointer<wclap64::Function<Return, Args...>> fnPtrPtr, Args... args) {
+			TaggedValue taggedResult;
+			TaggedValue taggedArgs[] = {TaggedValue::from(args)...};
+			size_t argsCount = sizeof(taggedArgs)/sizeof(TaggedValue);
+
+			_wclapInstanceCall64(handle, fnPtrPtr.wasmPointer, true, &taggedResult, taggedArgs, argsCount);
 
 			Return v;
 			taggedResult.set(v);

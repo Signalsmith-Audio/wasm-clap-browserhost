@@ -48,7 +48,6 @@ struct HostedWclap {
 		std::cout << "Unsupported WCLAP host extension: " << extensionId << std::endl;
 		return {0}; // no extensions for now
 	}
-
 	static void hostRequestRestart32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->hostRequestRestart();
@@ -262,7 +261,7 @@ struct HostedWclap {
 	
 	static HostedPlugin * getPlugin(void *context, wclap32::Pointer<const wclap32::wclap_host> hostPtr) {
 		auto &self = *(HostedWclap *)context;
-		wclap32::Pointer<wclap32::Pointer<void>> hostDataPtr = {hostPtr.wasmPointer + offsetof(wclap32::wclap_host, host_data)};
+		auto hostDataPtr = hostPtr[&wclap32::wclap_host::host_data];
 		wclap32::Pointer<void> hostData = self.instance->get(hostDataPtr);
 		return self.pluginLookup.get(int32_t(hostData.wasmPointer));
 	}
@@ -273,8 +272,8 @@ struct HostedWclap {
 		// Write the host structures into WCLAP memory
 		auto hostPtr = scoped.copyAcross(host);
 		// Attempt to actually create the plugin using the plugin factory
-		auto pluginFactory = instance->get(pluginFactoryPtr);
-		auto pluginPtr = instance->call(pluginFactory.create_plugin, pluginFactoryPtr, hostPtr, scoped.writeString(pluginId));
+		auto fnPtr = pluginFactoryPtr[&wclap32::wclap_plugin_factory::create_plugin];
+		auto pluginPtr = instance->call(fnPtr, pluginFactoryPtr, hostPtr, scoped.writeString(pluginId));
 		if (!pluginPtr) {
 			std::cerr << "Failed to create WCLAP plugin: " << pluginId << "\n";
 			return nullptr;
@@ -285,9 +284,8 @@ struct HostedWclap {
 		uint32_t pluginIndex = plugin->pluginIndex = pluginLookup.retain(plugin);
 		
 		// Write the plugin index into the `host.host_data` pointer
-		wclap32::Pointer<wclap32::Pointer<void>> hostDataPtr = {hostPtr.wasmPointer + offsetof(wclap32::wclap_host, host_data)};
-		wclap32::Pointer<void> indexAsPointer{pluginIndex};
-		instance->set(hostDataPtr, indexAsPointer);
+		auto hostDataPtr = hostPtr[&wclap32::wclap_host::host_data];
+		instance->set(hostDataPtr, {pluginIndex});
 		
 		std::cout << "Created WCLAP plugin: " << pluginId << "\n";
 		plugin->init();

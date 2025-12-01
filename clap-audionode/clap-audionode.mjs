@@ -85,12 +85,12 @@ export default class ClapAudioNode {
 				});
 			};
 		}
-//
-//		effectNode.getFile = async path => {
-//			let files = (await this.#m_modulePromise).files;
-//			return files[path.replace(/[?#].*/, '')];
-//		};
-//
+
+		effectNode.getFile = async path => {
+			let files = (await this.#m_pluginConfigPromise).files;
+			return files[path.replace(/[?#].*/, '')];
+		};
+
 		// Hacky event-handling: add a named function to this map
 		effectNode.events = Object.create(null);
 //
@@ -132,7 +132,7 @@ export default class ClapAudioNode {
 				let iframe = null;
 
 				effectNode.port.onmessage = e => {
-					if (spawnWorker(e.data)) return;
+//					if (spawnWorker(e.data)) return;
 					let data = e.data;
 					if (data instanceof ArrayBuffer) {
 						// it's a message from the plugin

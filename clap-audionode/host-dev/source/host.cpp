@@ -27,7 +27,10 @@ extern "C" {
 	void destroyPlugin(HostedPlugin *plugin) {
 		delete plugin;
 	}
-	CborValue * getPluginInfo(HostedPlugin *plugin) {
+	CborValue * pluginGetInfo(HostedPlugin *plugin) {
 		return plugin->getInfo();
+	}
+	void pluginMessage(HostedPlugin *plugin, unsigned char *bytes, uint32_t length) {
+		plugin->message(bytes, length);
 	}
 }

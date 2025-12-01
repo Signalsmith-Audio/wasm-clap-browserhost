@@ -1,3 +1,6 @@
+#include <iostream>
+#define LOG_EXPR(expr) std::cout << #expr " = " << (expr) << std::endl;
+
 #include "./wclap-js-instance.h"
 
 Instance * _wclapInstanceCreate(bool is64) {

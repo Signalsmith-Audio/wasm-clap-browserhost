@@ -481,6 +481,19 @@
 				}, 1000);
 			}
 			startPage();
+
+			// Hue-shift the background based on `?module=...` URL
+			function fnv1aFloat(string) {
+				let fnv1a32 = 0x811c9dc5;
+				for (let i = 0; i < string.length; ++i) {
+					let byte = string.charCodeAt(i);
+					fnv1a32 = ((fnv1a32^byte)*0x1000193)|0;
+				}
+				return fnv1a32/0xffffffff;
+			}
+			let style = document.createElement('style');
+			style.textContent = `#background,#pause-overlay::backdrop{filter:hue-rotate(${fnv1aFloat(new URLSearchParams(location.search).get('module') || 'ABCDA')*360}deg)}`;
+			document.head.appendChild(style);
 		</script>
 	</body>
 </html>
