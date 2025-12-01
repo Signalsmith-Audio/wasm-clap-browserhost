@@ -25,7 +25,7 @@
 				overflow: auto;
 				
 				font-family: Verdana, sans-serif;
-				background: #8396A6;
+				background: #9a9aa3;
 				color: #000;
 			}
 			@media (max-width: 400pt) {
@@ -49,7 +49,28 @@
 				object-fit: cover;
 				z-index: -1;
 				pointer-events: none;
-				opacity: 0.5;
+				opacity: 0.3;
+				animation: fadein03 ease-in-out 0.2s;
+				filter: grayscale(1);
+			}
+			#background2 {
+				position: fixed;
+				left: 0;
+				top: 0;
+				width: 100vw;
+				height: 100vh;
+				z-index: -2;
+				pointer-events: none;
+				animation: fadein03 ease-out 0.5s;
+				opacity: 0.3;
+			}
+			@keyframes fadein03 {
+				from {
+					opacity: 0.1;
+				}
+				to {
+					opacity: 0.3;
+				}
 			}
 			@media (max-aspect-ratio: 1) {
 				#background {
@@ -188,6 +209,7 @@
 		
 		<!-- https://unsplash.com/photos/a-close-up-of-a-pink-and-blue-liquid-hNrd99q5peI -->
 		<img id="background" src="background.jpg">
+		<div id="background2"></div>
 		<audio id="media" controls loop crossorigin></audio>
 		<div id="buttons">
 			<select id="select-plugin-id" title="select plugin"></select>
@@ -393,8 +415,8 @@
 
 					let input = document.createElement('input');
 					input.type = 'range';
-					input.min = param.min_value;
-					input.max = param.max_value;
+					input.min = param.min;
+					input.max = param.max;
 					input.step = param.flags.stepped ? 1 : 1e-6;
 					let writeValue = input.oninput = async e => {
 						param.value = await effectNode.setParam(param.id, parseFloat(input.value));
@@ -408,7 +430,7 @@
 					readValue();
 					paramUpdateFns.push(readValue);
 					input.ondblclick = e => {
-						input.value = param.default_value;
+						input.value = param['default'];
 						writeValue();
 					};
 					
@@ -482,18 +504,16 @@
 			}
 			startPage();
 
-			// Hue-shift the background based on `?module=...` URL
-			function fnv1aFloat(string) {
-				let fnv1a32 = 0x811c9dc5;
-				for (let i = 0; i < string.length; ++i) {
-					let byte = string.charCodeAt(i);
-					fnv1a32 = ((fnv1a32^byte)*0x1000193)|0;
-				}
-				return fnv1a32/0xffffffff;
-			}
-			let style = document.createElement('style');
-			style.textContent = `#background,#pause-overlay::backdrop{filter:hue-rotate(${fnv1aFloat(new URLSearchParams(location.search).get('module') || 'ABCDA')*360}deg)}`;
-			document.head.appendChild(style);
+			// Vary the colour scheme based on `?module=...` URL
+			crypto.subtle.digest("SHA-256", new TextEncoder().encode(new URLSearchParams(location.search).get('module')).buffer).then(b => {
+				let values = Array.from(new Uint16Array(b)).map(x => x/65536);
+
+				let style = document.createElement('style');
+				let sepia = values.pop()/2;
+				let invert = (values.pop() < 0.6) ? '0' : '1';
+				style.textContent = `#background,#pause-overlay::backdrop{filter:hue-rotate(150deg) sepia(${sepia}) hue-rotate(${values.pop()*360}deg) saturate(${1 + sepia}) invert(${invert})}#background2{background: linear-gradient(${values.pop()*360}deg, #F80, #F08, #80F, #08F)}`;
+				document.head.appendChild(style);
+			});
 		</script>
 	</body>
 </html>

@@ -60,7 +60,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 
 		(async init => {
 			this.host = await startHost(init.host, hostImports());
-			let hostApi = this.host.instance.exports;
+			let hostApi = this.hostApi = this.host.instance.exports;
 			let instancePtr = await this.host.startWclap(init.wclap);
 			this.hostedPtr = hostApi.makeHosted(instancePtr);
 
@@ -146,91 +146,6 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 	}
 	
 	pendingEvents = [];
-	makeHostMethods() {
-		return {
-			input_events_size: () => this.pendingEvents.length,
-			input_events_get: i => this.pendingEvents[i],
-			output_events_try_push: ptr => {
-				let plugin = this.clapPlugin;
-				let header = plugin.api.clap_event_header(ptr);
-				let bytes = plugin.api.asTyped(Uint8Array, ptr, header.size).slice(0);
-				
-				for (let otherId in this.eventTargets) {
-					if (globalThis.clapRouting[otherId]) {
-						globalThis.clapRouting[otherId].events.push(bytes);
-					}
-				}
-				return true;
-			},
-
-			request_restart() {throw Error("not implemented");},
-			request_process() {throw Error("not implemented");},
-			request_callback: () => {
-				this.wantsMainThreadCallback = true;
-			},
-
-			istream_read: (voidPointer, length) => {
-				length = Number(length);
-				let streamInput = this.streamInput;
-				if (!streamInput) throw Error("set .clapStreamInput={pointer:..., length: ...} before passing an istream");
-				let bytes = Math.min(length, streamInput.length);
-				if (bytes > 0) {
-					let tmpBlock = this.clapPlugin.api.asTyped(Uint8Array, streamInput.pointer, bytes);
-					let readBlock = this.clapPlugin.api.asTyped(Uint8Array, voidPointer, bytes);
-					readBlock.set(tmpBlock);
-					streamInput.pointer += bytes;
-					streamInput.length -= bytes;
-				}
-				return BigInt(bytes);
-			},
-			ostream_write: (voidPointer, length) => {
-				length = Number(length);
-				let streamOutput = this.streamOutput;
-				let bytes = Math.min(length, streamOutput.buffer.length - streamOutput.index);
-				if (bytes > 0) {
-					let writeBlock = this.clapPlugin.api.asTyped(Uint8Array, voidPointer, bytes);
-					let bufferBlock = streamOutput.buffer.subarray(streamOutput.index, bytes);
-					bufferBlock.set(writeBlock);
-					streamOutput.index += bytes;
-					streamOutput.result = streamOutput.buffer.subarray(0, streamOutput.index);
-				}
-				if (!bytes && length > 0) return -1n; // error (we ran out of space);
-				return BigInt(bytes);
-			},
-			
-			ext_params_rescan: flags => {
-				this.port.postMessage(['params_rescan', flags]);
-			},
-			ext_params_clear(paramId, flags) {
-				console.error("clap_host_params.clear() requested but not implemented");
-			},
-			ext_params_request_flush() {
-				console.error("clap_host_params.request_flush() requested but not implemented");
-			},
-
-			ext_webview_is_open: () => this.webviewIsOpen,
-			// plugin sent to us
-			ext_webview_send: (ptr, length) => {
-				if (!this.webIsOpen) return false;
-				let message8 = this.clapPlugin.api.asTyped(Uint8Array, ptr, length);
-				let message = message8.slice().buffer;
-				this.port.postMessage(message, [message]); // copy the buffer, and transfer ownership of the copy
-			},
-			// Older draft version, for compatibility
-			ext_web_is_open: () => this.webviewIsOpen,
-			// plugin sent to us
-			ext_web_send: (ptr, length) => {
-				if (!this.webIsOpen) return false;
-				let message8 = this.clapPlugin.api.asTyped(Uint8Array, ptr, length);
-				let message = message8.slice().buffer;
-				this.port.postMessage(message, [message]); // copy the buffer, and transfer ownership of the copy
-			},
-
-			ext_state_mark_dirty: () => {
-				this.port.postMessage(['state_mark_dirty', null]);
-			}
-		};
-	};
 	
 	eventToBytes(type, event) {
 		let plugin = this.clapPlugin;
@@ -326,61 +241,17 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			
 			return this.remoteMethods.getParam.call(this, id);
 		},
-		getParam(id) {
-			let plugin = this.clapPlugin;
-			let params = plugin.ext['clap.params'];
-			if (!params) throw Error("clap.params not supported");
-			
-			let valuePtr = plugin.api.tempBytes(8, 8);
-			params.get_value(id, valuePtr);
-			let value = plugin.api.f64(valuePtr);
-		
-			let textBuffer = plugin.api.temp(plugin.api.clap_name, "?");
-			let text = value + "";
-			if (params.value_to_text(id, value, textBuffer, plugin.api.CLAP_NAME_SIZE)) {
-				text = plugin.api.clap_name(textBuffer);
-			}
-			return {value: value, text: text};
+		getParam(paramId) {
+			let value = this.decodeCbor(this.hostApi.pluginGetParam(this.pluginPtr, paramId));
+debugger;
+			return value;
 		},
 		getParams() {
-			let plugin = this.clapPlugin;
-			let params = plugin.ext['clap.params'];
-			if (!params) {
-				console.error("clap.params not supported");
-				return [];
-			}
-
-			let paramInfo = [];
-			for (let i = 0; i < params.count(); ++i) {
-				let infoPtr = plugin.api.temp(plugin.api.clap_param_info, {});
-				params.get_info(i, infoPtr);
-				let info = plugin.api.clap_param_info(infoPtr);
-				let flags = {
-					stepped: !!(info.flags&1),
-					periodic: !!(info.flags&2),
-					hidden: !!(info.flags&4),
-					readonly: !!(info.flags&8),
-					bypass: !!(info.flags&16),
-					automatable: (info.flags&32) ? {
-						note: !!(info.flags&64),
-						key: !!(info.flags&128),
-						channel: !!(info.flags&256),
-						port: !!(info.flags&512)
-					} : false,
-					modulatable: (info.flags&1024) ? {
-						note: !!(info.flags&2048),
-						key: !!(info.flags&4096),
-						channel: !!(info.flags&8192),
-						port: !!(info.flags&16384)
-					} : false,
-					requiresProcess: !!(info.flags&32768),
-					isEnum: !!(info.flags&(65536))
-				};
-				info.flags = flags;
-				info.value = this.remoteMethods.getParam.call(this, info.id);
-				paramInfo.push(info);
-			}
-			return paramInfo;
+			let params = this.decodeCbor(this.hostApi.pluginGetParams(this.pluginPtr));
+			params.forEach(param => {
+				param.value = this.decodeCbor(this.hostApi.pluginGetParam(this.pluginPtr, param.id));
+			});
+			return params;
 		},
 		webviewOpen(isOpen, isShowing) {
 			console.log('isShowing should go through the clap.gui extension');

@@ -33,4 +33,10 @@ extern "C" {
 	void pluginMessage(HostedPlugin *plugin, unsigned char *bytes, uint32_t length) {
 		plugin->message(bytes, length);
 	}
+	CborValue * pluginGetParams(HostedPlugin *plugin) {
+		return plugin->getParams();
+	}
+	CborValue * pluginGetParam(HostedPlugin *plugin, uint32_t pluginId) {
+		return plugin->getParam(pluginId);
+	}
 }

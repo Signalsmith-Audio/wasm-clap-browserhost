@@ -2,7 +2,12 @@
 
 #include "./common.h"
 
+//__attribute__((import_module("_wclapInstance"), import_name("registerHost64")))
+//extern uint64_t _wclapInstanceRegisterHost64(const void *handle, void *context, size_t fn, const char *sig, size_t sigLength);
+
 // A WCLAP plugin and its host
+namespace wclap32 {
+
 struct HostedPlugin {
 	uint32_t pluginIndex = uint32_t(-1);
 
@@ -11,39 +16,58 @@ struct HostedPlugin {
 	using ArenaPtr = std::unique_ptr<Arena>;
 	ArenaPtr arena;
 		
-	wclap32::Pointer<const wclap32::wclap_plugin> pluginPtr;
-	wclap32::wclap_plugin wclapPlugin;
-	wclap32::Pointer<const wclap32::wclap_plugin_webview> webviewExtPtr;
-	
-	HostedPlugin(wclap32::Pointer<const wclap32::wclap_plugin> pluginPtr, Instance *instance, ArenaPtr arena) : pluginPtr(pluginPtr), instance(instance), arena(std::move(arena)) {}
+	Pointer<const wclap_plugin> pluginPtr;
+	wclap_plugin wclapPlugin;
+	Pointer<const wclap_plugin_audio_ports> audioPortsExtPtr;
+	Pointer<const wclap_plugin_gui> guiExtPtr;
+	Pointer<const wclap_plugin_latency> latencyExtPtr;
+	Pointer<const wclap_plugin_note_ports> notePortsExtPtr;
+	Pointer<const wclap_plugin_params> paramsExtPtr;
+	Pointer<const wclap_plugin_state> stateExtPtr;
+	Pointer<const wclap_plugin_tail> tailExtPtr;
+	Pointer<const wclap_plugin_webview> webviewExtPtr;
+
+	template<class FnPtr, class... Args>
+	auto callPlugin(FnPtr fn, Args... args) {
+		return instance->call(fn, pluginPtr, args...);
+	}
+
+	HostedPlugin(Pointer<const wclap_plugin> pluginPtr, Instance *instance, ArenaPtr arena) : pluginPtr(pluginPtr), instance(instance), arena(std::move(arena)) {}
 	~HostedPlugin() {
 		if (pluginPtr) {
-			auto plugin = instance->get(pluginPtr);
-			instance->call(plugin.destroy, pluginPtr);
+			callPlugin(pluginPtr[&wclap_plugin::destroy]);
 		}
 		arena->pool.returnToPool(arena);
 	}
 
 	void init() {
 		auto scoped = arena->scoped();
-		wclapPlugin = instance->get(pluginPtr);
-		instance->call(wclapPlugin.init, pluginPtr);
-		webviewExtPtr = instance->call(wclapPlugin.get_extension, pluginPtr, scoped.writeString("clap.webview/3")).cast<wclap32::wclap_plugin_webview>();
+		auto plugin = instance->get(pluginPtr);
+		callPlugin(plugin.init);
+		audioPortsExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.audio-ports")).cast<wclap_plugin_audio_ports>();
+		guiExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.gui")).cast<wclap_plugin_gui>();
+		latencyExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.latency")).cast<wclap_plugin_latency>();
+		notePortsExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.note-ports")).cast<wclap_plugin_note_ports>();
+		paramsExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.params")).cast<wclap_plugin_params>();
+		stateExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.state")).cast<wclap_plugin_state>();
+		tailExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.tail")).cast<wclap_plugin_tail>();
+		webviewExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.webview/3")).cast<wclap_plugin_webview>();
 	}
 	
 	CborValue * getInfo() {
+		auto plugin = instance->get(pluginPtr);
 		auto scoped = arena->scoped();
 		auto cbor = getCbor();
 		cbor.openMap();
 
 		cbor.addUtf8("desc");
-		writeDescriptorCbor(instance, cbor, instance->get(wclapPlugin.desc));
+		writeDescriptorCbor(instance, cbor, instance->get(plugin.desc));
 
 		cbor.addUtf8("webview");
 		if (webviewExtPtr) {
 			auto webviewExt = instance->get(webviewExtPtr);
 			auto buffer = scoped.array<char>(2048);
-			auto length = instance->call(webviewExt.get_uri, pluginPtr, buffer, 2047);
+			auto length = callPlugin(webviewExt.get_uri, buffer, 2047);
 			if (length <= 0 || length >= 2048) {
 				cbor.addNull();
 			} else {
@@ -56,6 +80,73 @@ struct HostedPlugin {
 		}
 
 		cbor.close();
+		return cborValue();
+	}
+	CborValue * setParam(wclap_id paramId, double value) {
+		
+	}
+	CborValue * getParam(wclap_id paramId) {
+		auto scoped = arena->scoped();
+		auto cbor = getCbor();
+
+		double value = 0;
+		auto valuePtr = scoped.copyAcross(value);
+
+		if (!callPlugin(paramsExtPtr[&wclap_plugin_params::get_value], paramId, valuePtr)) {
+			cbor.addNull();
+			return cborValue();
+		}
+		value = instance->get(valuePtr);
+		auto textPtr = scoped.array<char>(255);
+		bool hasText = callPlugin(paramsExtPtr[&wclap_plugin_params::value_to_text], paramId, value, textPtr, 255);
+
+		cbor.openMap();
+		cbor.addUtf8("value");
+		cbor.addFloat(value);
+		if (hasText) {
+			char text[256] = {};
+			instance->getArray(textPtr, text, 255);
+			cbor.addUtf8("text");
+			cbor.addUtf8(text);
+		}
+		cbor.close();
+		return cborValue();
+	}
+	CborValue * getParams() {
+		auto scoped = arena->scoped();
+		auto cbor = getCbor();
+		cbor.openArray();
+
+		wclap_param_info info;
+		auto infoPtr = scoped.copyAcross(info);
+		
+		auto paramsExt = instance->get(paramsExtPtr);
+		auto count = callPlugin(paramsExt.count);
+		for (uint32_t i = 0; i < count; ++i) {
+			if (!callPlugin(paramsExt.get_info, i, infoPtr)) continue;
+			info = instance->get(infoPtr);
+			cbor.openMap();
+
+			cbor.addUtf8("id");
+			cbor.addInt(info.id);
+			cbor.addUtf8("flags");
+			cbor.addInt(info.flags);
+			cbor.addUtf8("name");
+			info.name[255] = 0; // ensure null-terminated
+			cbor.addUtf8(info.name);
+			cbor.addUtf8("module");
+			info.module[1023] = 0;
+			cbor.addUtf8(info.module);
+			cbor.addUtf8("min");
+			cbor.addFloat(info.min_value);
+			cbor.addUtf8("max");
+			cbor.addFloat(info.max_value);
+			cbor.addUtf8("default");
+			cbor.addFloat(info.default_value);
+			
+			cbor.close();
+		}
+		cbor.close(); // array
 		return cborValue();
 	}
 
@@ -127,19 +218,21 @@ struct HostedPlugin {
 		LOG_EXPR("host_tail.changed()");
 	}
 
-	bool webviewSend(wclap32::Pointer<const void> buffer, uint32_t size) {
+	bool webviewSend(Pointer<const void> buffer, uint32_t size) {
 		LOG_EXPR("host_webview.send()");
 		return false;
 	}
 	void message(unsigned char *bytes, uint32_t length) {
 		if (!webviewExtPtr) return;
-		auto webviewExt = instance->get(webviewExtPtr);
 
 		// TODO: send directly to the Instance's memory, instead of bouncing through the host memory
 		auto scoped = arena->scoped();
 		auto ptr = scoped.array<unsigned char>(length);
 		instance->setArray(ptr, bytes, length);
 
-		instance->call(webviewExt.receive, pluginPtr, ptr.cast<const void>(), length);
+		callPlugin(webviewExtPtr[&wclap_plugin_webview::receive], ptr.cast<const void>(), length);
 	}
 };
+
+}
+using HostedPlugin = wclap32::HostedPlugin;
