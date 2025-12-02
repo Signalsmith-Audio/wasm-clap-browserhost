@@ -36,7 +36,29 @@ extern "C" {
 	CborValue * pluginGetParams(HostedPlugin *plugin) {
 		return plugin->getParams();
 	}
-	CborValue * pluginGetParam(HostedPlugin *plugin, uint32_t pluginId) {
-		return plugin->getParam(pluginId);
+	CborValue * pluginGetParam(HostedPlugin *plugin, uint32_t paramId) {
+		return plugin->getParam(paramId);
+	}
+	void pluginSetParam(HostedPlugin *plugin, uint32_t paramId, double value) {
+		return plugin->setParam(paramId, value);
+	}
+	bool pluginStart(HostedPlugin *plugin, double sRate, uint32_t minFrames, uint32_t maxFrames) {
+		return plugin->start(sRate, minFrames, maxFrames);
+	}
+	void pluginStop(HostedPlugin *plugin) {
+		return plugin->stop();
+	}
+	bool pluginAcceptEvent(HostedPlugin *plugin, const void *header) {
+		return plugin->acceptEvent(header);
+	}
+
+	CborValue * pluginProcessGetInputs(HostedPlugin *plugin, uint32_t blockLength) {
+		return plugin->processGetInputs(blockLength);
+	}
+	CborValue * pluginProcess(HostedPlugin *plugin) {
+		return plugin->process();
+	}
+	CborValue * pluginProcessGetOutputs(HostedPlugin *plugin) {
+		return plugin->processGetOutputs();
 	}
 }

@@ -12,8 +12,8 @@ class WclapHost {
 	#functionTable;
 	
 	ready;
-	instance;
-	memory;
+	hostInstance;
+	hostMemory;
 
 	hostThreadSpawn(threadArg) {
 		console.error("Host attempted to start a new thread, but we don't support that (yet)");
@@ -49,6 +49,7 @@ class WclapHost {
 			return forwardingInstance.exports;
 		};
 		
+		// These are the methods declared in `wclap-js-instance.h`, to provide the `Instance` implementation
 		hostImports._wclapInstance = {
 			release: instancePtr => {
 				delete this.#wclapMap[instancePtr];
@@ -61,7 +62,7 @@ class WclapHost {
 				let wasmFnIndex = entry.functionTable.length;
 				entry.functionTable.grow(1);
 				let sig = '';
-				let sigBytes = new Uint8Array(this.memory.buffer).subarray(funcSig, funcSig + funcSigLength);
+				let sigBytes = new Uint8Array(this.hostMemory.buffer).subarray(funcSig, funcSig + funcSigLength);
 				sigBytes.forEach(b => {
 					sig += String.fromCharCode(b);
 				});
@@ -98,7 +99,7 @@ class WclapHost {
 			},
 			countUntil32: (instancePtr, startPtr, untilValuePtr, size, maxCount) => {
 				let entry = getEntry(instancePtr);
-				let untilArray = new Uint8Array(this.memory.buffer).subarray(untilValuePtr, untilValuePtr + size);
+				let untilArray = new Uint8Array(this.hostMemory.buffer).subarray(untilValuePtr, untilValuePtr + size);
 				let wclapA = new Uint8Array(entry.memory.buffer).subarray(startPtr);
 				for (let i = 0; i < maxCount; ++i) {
 					let offset = i*size;
@@ -119,7 +120,7 @@ class WclapHost {
 					wasmFn = entryDataView.getUint32(wasmFn, true);
 				}
 
-				let dataView = new DataView(this.memory.buffer);
+				let dataView = new DataView(this.hostMemory.buffer);
 				let args = [];
 				for (let i = 0; i < argsCount; ++i) {
 					let ptr = argsPtr + i*16;
@@ -163,13 +164,13 @@ class WclapHost {
 			memcpyToOther32: (instancePtr, wclapP, hostP, size) => {
 				let entry = getEntry(instancePtr);
 				let wclapA = new Uint8Array(entry.memory.buffer).subarray(wclapP, wclapP + size);
-				let hostA = new Uint8Array(this.memory.buffer).subarray(hostP, hostP + size);
+				let hostA = new Uint8Array(this.hostMemory.buffer).subarray(hostP, hostP + size);
 				wclapA.set(hostA);
 				return true;
 			},
 			memcpyFromOther32: (instancePtr, hostP, wclapP, size) => {
 				let entry = getEntry(instancePtr);
-				let hostA = new Uint8Array(this.memory.buffer).subarray(hostP, hostP + size);
+				let hostA = new Uint8Array(this.hostMemory.buffer).subarray(hostP, hostP + size);
 				let wclapA = new Uint8Array(entry.memory.buffer).subarray(wclapP, wclapP + size);
 				hostA.set(wclapA);
 				return true;
@@ -185,6 +186,7 @@ class WclapHost {
 			let importMemory = config.memory;
 			let needsInit = !importMemory;
 
+			// Memory import (if defined)
 			WebAssembly.Module.imports(config.module).forEach(entry => {
 				if (entry.kind == 'memory') {
 					if (!importMemory) {
@@ -208,18 +210,18 @@ class WclapHost {
 				return this.hostThreadSpawn(threadArg);
 			};
 
-			this.instance = await WebAssembly.instantiate(this.#config.module, hostImports);
-			this.memory = importMemory || this.instance.exports.memory;
+			this.hostInstance = await WebAssembly.instantiate(this.#config.module, hostImports);
+			this.hostMemory = importMemory || this.hostInstance.exports.memory;
 			
-			for (let key in this.instance.exports) {
-				let e = this.instance.exports[key];
+			for (let key in this.hostInstance.exports) {
+				let e = this.hostInstance.exports[key];
 				if (e instanceof WebAssembly.Table && typeof e.get(e.length - 1) == 'function') {
 					this.#functionTable = e;
 				}
 			}
 
-			this.#wasi.bindToOtherMemory(this.memory);
-			if (needsInit) this.instance.exports._initialize();
+			this.#wasi.bindToOtherMemory(this.hostMemory);
+			if (needsInit) this.hostInstance.exports._initialize();
 
 			return this;
 		})();
@@ -292,20 +294,19 @@ class WclapHost {
 		if (needsInit) {
 			let is64 = pluginInstance.exports.clap_entry instanceof BigInt;
 if (is64) throw Error("wasm64 WCLAP isn't supported yet");
-			instancePtr = this.instance.exports._wclapInstanceCreate(is64);
+			instancePtr = this.hostInstance.exports._wclapInstanceCreate(is64);
 			// Set the path
 			let pathBytes = new TextEncoder('utf-8').encode(initObj.pluginPath);
-			let pathPtr = this.instance.exports._wclapInstanceSetPath(instancePtr, pathBytes.length);
-			new Uint8Array(this.memory.buffer).set(pathBytes, pathPtr);
+			let pathPtr = this.hostInstance.exports._wclapInstanceSetPath(instancePtr, pathBytes.length);
+			new Uint8Array(this.hostMemory.buffer).set(pathBytes, pathPtr);
 		}
 		this.#wclapMap[instancePtr] = entry;
 		if (initObj.memory) initObj.instancePtr = instancePtr; // only save if we're also saving the memory
 
-		return instancePtr;
-	}
-	
-	instanceMemory(instancePtr) {
-		return this.#wclapMap[instancePtr].memory;
+		return {
+			ptr: instancePtr,
+			memory: entry.memory
+		};
 	}
 }
 

@@ -26,13 +26,38 @@ struct HostedPlugin {
 	Pointer<const wclap_plugin_state> stateExtPtr;
 	Pointer<const wclap_plugin_tail> tailExtPtr;
 	Pointer<const wclap_plugin_webview> webviewExtPtr;
+	
+	// TODO: better queue for this
+	std::mutex pendingEventsMutex;
+	std::vector<unsigned char> pendingEventBytes;
+	std::vector<size_t> pendingEventStarts;
+	void addEvent32(const wclap_event_header *event) {
+		std::unique_lock<std::mutex> lock(pendingEventsMutex);
+		auto index = pendingEventBytes.size();
+		pendingEventStarts.push_back(index);
+		pendingEventBytes.resize(index + event->size);
+		std::memcpy(pendingEventBytes.data() + index, event, event->size);
+	}
+	bool acceptEvent(const void *ptr) {
+		// These are events coming from other plugins.
+		// It's our job to only pass through appropriate events - i.e. only events which require no 32/64 translation, or effect-specific IDs / cookie pointers.
+		auto *event = (const wclap_event_header *)ptr;
+		if (event->type == WCLAP_EVENT_NOTE_ON || event->type == WCLAP_EVENT_NOTE_OFF || event->type == WCLAP_EVENT_NOTE_CHOKE || event->type == WCLAP_EVENT_MIDI || event->type == WCLAP_EVENT_MIDI_SYSEX || event->type == WCLAP_EVENT_MIDI2) {
+			addEvent32(event);
+			return true;
+		}
+		return false;
+	}
 
 	template<class FnPtr, class... Args>
 	auto callPlugin(FnPtr fn, Args... args) {
 		return instance->call(fn, pluginPtr, args...);
 	}
 
-	HostedPlugin(Pointer<const wclap_plugin> pluginPtr, Instance *instance, ArenaPtr arena) : pluginPtr(pluginPtr), instance(instance), arena(std::move(arena)) {}
+	HostedPlugin(Pointer<const wclap_plugin> pluginPtr, Instance *instance, ArenaPtr arena) : pluginPtr(pluginPtr), instance(instance), arena(std::move(arena)) {
+		pendingEventBytes.reserve(8192);
+		pendingEventStarts.reserve(1024);
+	}
 	~HostedPlugin() {
 		if (pluginPtr) {
 			callPlugin(pluginPtr[&wclap_plugin::destroy]);
@@ -41,7 +66,7 @@ struct HostedPlugin {
 	}
 
 	void init() {
-		auto scoped = arena->scoped();
+		auto scoped = arena->pool.scoped();
 		auto plugin = instance->get(pluginPtr);
 		callPlugin(plugin.init);
 		audioPortsExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.audio-ports")).cast<wclap_plugin_audio_ports>();
@@ -56,7 +81,7 @@ struct HostedPlugin {
 	
 	CborValue * getInfo() {
 		auto plugin = instance->get(pluginPtr);
-		auto scoped = arena->scoped();
+		auto scoped = arena->pool.scoped();
 		auto cbor = getCbor();
 		cbor.openMap();
 
@@ -82,8 +107,26 @@ struct HostedPlugin {
 		cbor.close();
 		return cborValue();
 	}
-	CborValue * setParam(wclap_id paramId, double value) {
-		
+	void setParam(wclap_id paramId, double value) {
+		wclap_event_param_value event{
+			.header={
+				.size=sizeof(wclap_event_param_value),
+				.time=0,
+				.space_id=WCLAP_CORE_EVENT_SPACE_ID,
+				.type=WCLAP_EVENT_PARAM_VALUE,
+				.flags=WCLAP_EVENT_IS_LIVE
+			},
+			.param_id=paramId,
+			// Plugin will have to look it up by event ID
+			.cookie={0},
+			// not note-specific
+			.note_id=-1,
+			.port_index=-1,
+			.channel=-1,
+			.key=-1,
+			.value=value
+		};
+		addEvent32(&event.header);
 	}
 	CborValue * getParam(wclap_id paramId) {
 		auto scoped = arena->scoped();
@@ -113,7 +156,7 @@ struct HostedPlugin {
 		return cborValue();
 	}
 	CborValue * getParams() {
-		auto scoped = arena->scoped();
+		auto scoped = arena->pool.scoped();
 		auto cbor = getCbor();
 		cbor.openArray();
 
@@ -148,6 +191,15 @@ struct HostedPlugin {
 		}
 		cbor.close(); // array
 		return cborValue();
+	}
+	bool start(double sRate, uint32_t minFrames, uint32_t maxFrames) {
+		if (!callPlugin(pluginPtr[&wclap_plugin::activate], sRate, minFrames, maxFrames)) return false;
+		if (!callPlugin(pluginPtr[&wclap_plugin::start_processing])) return false;
+		return true;
+	}
+	void stop() {
+		callPlugin(pluginPtr[&wclap_plugin::stop_processing]);
+		callPlugin(pluginPtr[&wclap_plugin::deactivate]);
 	}
 
 	void hostRequestRestart() {

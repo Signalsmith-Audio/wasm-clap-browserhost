@@ -21,16 +21,16 @@ export default class ClapAudioNode {
 	
 	async plugins() {
 		let host = await startHost(await this.#m_hostConfigPromise, hostImports());
-		let hostApi = host.instance.exports;
-		let instancePtr = await host.startWclap(await this.#m_pluginConfigPromise);
+		let hostApi = host.hostInstance.exports;
+		let wclapInstance = await host.startWclap(await this.#m_pluginConfigPromise);
 
-		let hostedPtr = hostApi.makeHosted(instancePtr);
+		let hostedPtr = hostApi.makeHosted(wclapInstance.ptr);
 		if (!hostedPtr) throw Error("Failed to load WCLAP");
 
 		// Decodes `CborReturn *`
 		let decodeCbor = ptr => {
 			if (!ptr) return null;
-			let buffer = host.memory.buffer;
+			let buffer = host.hostMemory.buffer;
 			let dataView = new DataView(buffer);
 			let cborPtr = dataView.getUint32(ptr, true);
 			let cborLength = dataView.getUint32(ptr + 4, true);

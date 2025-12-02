@@ -11,13 +11,22 @@ if (!globalThis.clapRouting) {
 	globalThis.clapRouting = Object.create(null);
 }
 
+let now = (typeof performance === 'object') ? performance.now.bind(performance) : Date.now.bind(Date);
+
 class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 	inputChannelCounts = [];
 	outputChannelCounts = [];
 	maxFramesCount = 128;
 
+	// Could be global
 	host;
-	hostedPtr;
+	
+	// Could be shared amongst all plugins from the same module
+	hostedWclapPtr; // The specific WCLAP model (created from an `Instance *` in C++)
+	instanceMemory; // We read/write sample data directly, to avoid copying in/out of the host
+
+	// specific to this module
+	pluginPtr;
 	
 	running = false;
 	routingId;
@@ -25,10 +34,10 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		delete globalThis.clapRouting[routingId];
 	});
 
-	// Decodes the (host-specific) `CborReturn *`
+	// Decode or fills the (host-specific) `CborReturn *`
 	decodeCbor(ptr) {
 		if (!ptr) return null;
-		let buffer = this.host.memory.buffer;
+		let buffer = this.host.hostMemory.buffer;
 		let dataView = new DataView(buffer);
 		let cborPtr = dataView.getUint32(ptr, true);
 		let cborLength = dataView.getUint32(ptr + 4, true);
@@ -42,8 +51,8 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		return this.sendBytes(bytes, true);
 	}
 	sendBytes(bytes, returnCbor) {
-		let ptr = this.host.instance.exports.resizeCbor(bytes.length);
-		let buffer = this.host.memory.buffer;
+		let ptr = this.hostApi.resizeCbor(bytes.length);
+		let buffer = this.host.hostMemory.buffer;
 		let dataView = new DataView(buffer);
 		let bufferPtr = dataView.getUint32(ptr, true);
 		let array = new Uint8Array(buffer).subarray(bufferPtr, bufferPtr + bytes.length);
@@ -59,29 +68,37 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		};
 
 		(async init => {
+			// Create one Host for every AudioNode (for now) - could be global in future
 			this.host = await startHost(init.host, hostImports());
-			let hostApi = this.hostApi = this.host.instance.exports;
-			let instancePtr = await this.host.startWclap(init.wclap);
-			this.hostedPtr = hostApi.makeHosted(instancePtr);
+			let hostApi = this.hostApi = this.host.hostInstance.exports;
+			
+			// This particular WASM module
+			let wclapInstance = await this.host.startWclap(init.wclap);
+			this.hostedWclapPtr = hostApi.makeHosted(wclapInstance.ptr);
+			this.instanceMemory = wclapInstance.memory;
 
 			let pluginId = init.pluginId;
 			if (!pluginId) {
 				let pluginIndex = init.pluginIndex || 0;
-				let moduleInfo = this.decodeCbor(hostApi.getInfo(this.hostedPtr));
+				let moduleInfo = this.decodeCbor(hostApi.getInfo(this.hostedWclapPtr));
 				pluginId = moduleInfo.plugins[pluginIndex].id;
 			}
 
-			// Manage the routing entry
+			// Manage the event-routing entry
 			this.routingId = pluginId + "/" + Math.random().toString(16).substr(2);
 			globalThis.clapRouting[this.routingId] = {
 				events: []
 			};
 			ClapAudioWorkletProcessor.#cleanup.register(this, this.routingId);
 			
-			this.pluginPtr = hostApi.createPlugin(this.hostedPtr, this.encodeCbor(pluginId));
+			this.pluginPtr = hostApi.createPlugin(this.hostedWclapPtr, this.encodeCbor(pluginId));
 			if (!this.pluginPtr) {
-				throw Error("Failed to create plugin: " + pluginId);
+				throw this.fatalError = Error("Failed to create plugin: " + pluginId);
 			}
+			if (!hostApi.pluginStart(this.pluginPtr, globalThis.sampleRate, 0, this.maxFramesCount)) {
+				throw this.fatalError = Error("Failed to start plugin: " + pluginId);
+			}
+			this.running = true;
 
 			// initial message lists plugin descriptor and remote methods
 			let pluginInfo = this.decodeCbor(hostApi.pluginGetInfo(this.pluginPtr));
@@ -90,11 +107,8 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 				methods: Object.keys(this.remoteMethods),
 			}));
 
-			this.running = true;
-
 			// subsequent messages are either proxied method calls, or ArrayBuffer messages from the webview
 			this.port.onmessage = async event => {
-				if (this.fatalError) return;
 				
 				let data = event.data;
 				if (data instanceof ArrayBuffer) {
@@ -103,6 +117,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 					return;
 				}
 				let [requestId, method, args] = data;
+				if (this.fatalError) return this.port.postMessage([requestId, this.fatalError]);
 
 				try {
 					let result = await this.remoteMethods[method].call(this, ...args);
@@ -118,50 +133,21 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 
 	fatalError = null;
 	failWithError(e) {
+		debugger;
+		console.error(e);
 		this.fatalError = e;
 	}
 	
-	webviewIsOpen = false;
-	
-	streamInput = {pointer: 0, length: 0};
-	streamOutput = {
-		buffer: new Uint8Array(16284),
-		index: 0,
-		result: new Uint8Array(0),
-		clear() {
-			this.index = 0;
-			this.result = this.buffer.subarray(0, 0);
-		}
-	};
-	
-	wantsMainThreadCallback = false;
 	mainThreadCallbackIfNeeded() {
-		if (!this.wantsMainThreadCallback) return;
-		this.wantsMainThreadCallback = false;
-		try {
-			this.clapPlugin.plugin.on_main_thread();
-		} catch (e) {
-			this.failWithError(e);
-		}
+		console.log("mainThreadCallbackIfNeeded()");
+//		throw Error("not implemented");
 	}
 	
-	pendingEvents = [];
-	
-	eventToBytes(type, event) {
-		let plugin = this.clapPlugin;
-		let eventPtr = plugin.api.temp(type, event);
-		let size = plugin.api.sizeof(type);
-		let bytes = plugin.api.asTyped(Uint8Array, eventPtr, size);
-		return bytes.slice(0);
-	}
-	
-	// Copies event bytes back into the WASM (temporary) memory, and clears the list
+	// Hands input events to the plugin, and clears the list
 	writePendingEvents() {
 		let plugin = this.clapPlugin;
-		this.pendingEvents = globalThis.clapRouting[this.routingId].events.map(eventBytes => {
-			let ptr = plugin.api.tempBytes(eventBytes.length);
-			plugin.api.asTyped(Uint8Array, ptr, eventBytes.length).set(eventBytes);
-			return ptr;
+		globalThis.clapRouting[this.routingId].events.forEach(bytes => {
+			hostApi.pluginAcceptEvent(this.pluginPtr, this.sendBytes(bytes));
 		});
 		globalThis.clapRouting[this.routingId].events = [];
 	}
@@ -184,291 +170,121 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			}
 		},
 		saveState() {
-			let plugin = this.clapPlugin;
-			let state = plugin.ext['clap.state'];
-			if (!state) throw Error("plugin doesn't support clap.state");
-			this.streamOutput.clear();
-			if (!state.save(plugin.hostPointers.ostream)) {
-				throw Error("state.save() returned false");
-			}
-			let stateArray = this.streamOutput.result.slice(); // TODO: transfer ownership, to avoid allocation/GC from this
-			return stateArray.buffer;
+			throw Error("not implemented");
+			//let stateArray = this.streamOutput.result.slice(); // TODO: transfer ownership, to avoid allocation/GC from this
+			//return stateArray.buffer;
 		},
 		loadState(stateArray) {
-			stateArray = new Uint8Array(ArrayBuffer.isView(stateArray) ? stateArray.buffer : stateArray);
-
-			let plugin = this.clapPlugin;
-			let state = plugin.ext['clap.state'];
-			if (!state) throw Error("plugin doesn't support clap.state");
-			
-			let tmpArr = plugin.api.tempTyped(Uint8Array, stateArray.length);
-			tmpArr.set(stateArray);
-			this.streamInput = {pointer: tmpArr.byteOffset, length: stateArray.length};
-			
-			if (!state.load(plugin.hostPointers.istream)) {
-				throw Error("state.load() returned false");
-			}
-			return true;
+			throw Error("not implemented");
 		},
 		setParam(id, value) {
-			let plugin = this.clapPlugin;
-			let params = plugin.ext['clap.params'];
-			if (!params) throw Error("clap.params not supported");
-			
-			let eventBytes = this.eventToBytes(plugin.api.clap_event_param_value, {
-				header: {
-					size: plugin.api.sizeof(plugin.api.clap_event_param_value),
-					time: 0,
-					space_id: 0, // CLAP_CORE_EVENT_SPACE_ID
-					type: plugin.api.CLAP_EVENT_PARAM_VALUE,
-					flags: 0
-				},
-				param_id: id,
-				cookie: 0,
-				note_id: -1,
-				port_index: -1,
-				channel: -1,
-				key: -1,
-				
-				value: value
-			});
-			globalThis.clapRouting[this.routingId].events.push(eventBytes);
+			this.hostApi.pluginSetParam(this.pluginPtr, paramId, value);
 
-			// Single-threaded, so no reason not to immediately flush
-			this.writePendingEvents();
-			params.flush(plugin.hostPointers.input_events, plugin.hostPointers.output_events);
-			this.pendingEvents = [];
+			// If we're being called here, then it's single-threaded, so there's no reason not to immediately flush
+			this.hostApi.paramFlush(this.pluginPtr);
 			
 			return this.remoteMethods.getParam.call(this, id);
 		},
 		getParam(paramId) {
-			let value = this.decodeCbor(this.hostApi.pluginGetParam(this.pluginPtr, paramId));
-debugger;
-			return value;
+			return this.decodeCbor(this.hostApi.pluginGetParam(this.pluginPtr, paramId));
 		},
 		getParams() {
 			let params = this.decodeCbor(this.hostApi.pluginGetParams(this.pluginPtr));
 			params.forEach(param => {
-				param.value = this.decodeCbor(this.hostApi.pluginGetParam(this.pluginPtr, param.id));
+				param.value = this.remoteMethods.getParam.call(this, param.id);
 			});
 			return params;
-		},
-		webviewOpen(isOpen, isShowing) {
-			console.log('isShowing should go through the clap.gui extension');
-			return this.webIsOpen = isOpen;
 		},
 		performance() {
 			return {js: this.#averageJsMs, wasm: this.#averageWasmMs};
 		},
 		getResource(path) {
-			let plugin = this.clapPlugin;
-			let webviewExt = plugin.ext['clap.webview/3'];
-			if (!webviewExt) {
-				console.error("clap.webview/3 not supported for getResource()");
-				return null;
-			}
-			let mimeBytes = plugin.api.tempBytes(128);
-			this.streamOutput.clear();
-			if (!webviewExt.get_resource(path, mimeBytes, 128, plugin.hostPointers.ostream)) {
-				throw Error("webview.get_resource() returned false");
-			}
-			let mimeString = plugin.api.fromArg(plugin.api.string, mimeBytes);
-			let result = this.streamOutput.result.slice(); // TODO: transfer ownership, to avoid allocation/GC from this
-			return {bytes: result.buffer, type: mimeString};
+			throw Error("not implemented");
+//			return {bytes: result.buffer, type: mimeString};
 		}
 	};
 
-	clapActivate() {
-		if (this.fatalError) return;
-		
-		let {api, plugin} = this.clapPlugin;
-		if (!plugin.activate(sampleRate, 1, this.maxFramesCount)) {
-			console.error("plugin.activate() failed");
-			this.clapPlugin.unbind(); // disconnects and cleans up
-			this.clapPlugin = null;
-		}
-		if (!plugin.start_processing()) {
-			plugin.deactivate();
-			console.error("plugin.start_processing() failed");
-			this.clapPlugin.unbind(); // disconnects and cleans up
-			this.clapPlugin = null;
-		}
-	}
-	
-	clapUpdateAudioPorts() {
-		if (this.fatalError) return;
-
-		let {api, plugin} = this.clapPlugin;
-		this.audioPortsIn = [];
-		this.audioPortsOut = [];
-		let audioPortsExt = this.clapPlugin.ext['clap.audio-ports'];
-		if (audioPortsExt) {
-			for (let isInput = 0; isInput < 2; ++isInput) {
-				let list = (isInput ? this.audioPortsOut : this.audioPortsIn);
-				let count = audioPortsExt.count(isInput);
-				for (let i = 0; i < count; ++i) {
-					let portPtr = api.temp(api.clap_audio_port_info, {});
-					audioPortsExt.get(i, isInput, portPtr);
-					let port = api.clap_audio_port_info(portPtr);
-					list.push(port);
-				}
-			}
-		}
-	}
-	
 	#averageJsMs = 0;
 	#averageWasmMs = 0;
 	
 	process(inputs, outputs, parameters) {
-		if (this.fatalError || !this.running) return false;
-		let jsStartTime = Date.now();
-		if (!this.clapPlugin) return true; // outputs are pre-filled with silence
-		let {api, plugin} = this.clapPlugin;
+		let jsStartTime = now();
+		if (this.fatalError || !this.running) return false; // outputs are pre-filled with silence
 
 		let blockLength = (outputs[0] || inputs[0])[0].length;
-
-		/*
-		if (inputs.length != this.audioPortsIn.length) {
-			throw Error("input audio-port mismatch");
-		}
-		if (outputs.length != this.audioPortsOut.length) {
-			throw Error("output audio-port mismatch");
-		}
-		*/
-
-		let audioBuffersInput = this.audioPortsIn.map((audioPortIn, portIndex) => {
-			let input = inputs[portIndex];
-			
-			// Sometimes if an input is stopped (or we're missing a port!), it gives us 0 input channels, so we have to make up our own
-			if (!input?.length) {
-				input = [];
-				// use some host space to make a fake buffer without allocating
-				let fakeInput = api.tempTyped(Float32Array, blockLength);
-				fakeInput.fill(0);
-				for (let i = 0; i < audioPortIn.channel_count; ++i) {
-					input.push(fakeInput);
-				}
-			}
-			
-			// Use host memory for audio buffers
-			let inputBufferPointers = api.tempTyped(api.pointer, audioPortIn.channel_count);
-			let inputBufferBlock = api.tempTyped(Float32Array, blockLength*audioPortIn.channel_count);
-			for (let index = 0; index < audioPortIn.channel_count; ++index) {
-				let channel = input[index%input.length];
-				let bufferPtr = inputBufferBlock.byteOffset + blockLength*index*4;
-				inputBufferPointers[index] = bufferPtr;
-
-				let array = inputBufferBlock.subarray(blockLength*index, blockLength*(index + 1));
-				array.set(channel);
-			}
-			
-			return {
-				data32: inputBufferPointers,
-				data64: 0,
-				channel_count: audioPortIn.channel_count,
-				latency: 0,
-				constant_mask: 0n // BigInt
-			};
-		});
-
-		let allOutputPointers = [];
-		let audioBuffersOutput = this.audioPortsOut.map((audioPortOut, portIndex) => {
-			let outputBufferPointers = api.tempTyped(api.pointer, audioPortOut.channel_count);
-			let outputBufferBlock = api.tempTyped(Float32Array, blockLength*audioPortOut.channel_count);
-			outputBufferBlock.fill(0.2); // not terrible, but deliberately not correct (for debugging)
-			for (let index = 0; index < audioPortOut.channel_count; ++index) {
-				let bufferPtr = outputBufferBlock.byteOffset + blockLength*index*4;
-				outputBufferPointers[index] = bufferPtr;
-				outputBufferBlock[index*blockLength] = 0.1; // bzzzzz
-			}
-			allOutputPointers.push(outputBufferPointers.slice(0));
-			
-			return {
-				data32: outputBufferPointers,
-				data64: 0,
-				channel_count: audioPortOut.channel_count,
-				latency: 0,
-				constant_mask: 0n // BigInt
-			};
-		});
-
-		// This writes them contiguously, so the first pointer can act as an array
-		let audioInputPtrs = audioBuffersInput.map(b => api.temp(api.clap_audio_buffer, b));
-		let audioOutputPtr = audioBuffersOutput.map(b => api.temp(api.clap_audio_buffer, b));
 		
-		// Write the audio buffers to the temporary scratch space
-		let processPtr = api.temp(api.clap_process, {
-			steady_time: -1n,
-			frames_count: blockLength,
-			transport: 0, //null
-			audio_inputs: audioInputPtrs[0],
-			audio_outputs: audioOutputPtr[0],
-			audio_inputs_count: this.audioPortsIn.length,
-			audio_outputs_count: this.audioPortsOut.length,
-			in_events: this.clapPlugin.hostPointers.input_events,
-			out_events: this.clapPlugin.hostPointers.output_events
-		});
-
 		this.writePendingEvents();
-
+		
+		let audioInputPtrs = this.decodeCbor(this.hostApi.pluginProcessGetInputs(this.pluginPtr, blockLength));
+		audioInputPtrs.forEach((ptrs, inputPort) => {
+			let jsInput = inputs[inputPort];
+			ptrs.forEach((ptr, channelIndex) => {
+				let instanceArray = new Float32Array(this.instanceMemory.buffer).subarray(ptr, ptr + blockLength);
+				if (jsInput && jsInput.length > 0) {
+					let jsChannel = jsInput[channelIndex%jsInput.length];
+					instanceArray.set(jsChannel);
+				} else {
+					for (let i = 0; i < blockLength; ++i) instanceArray[i] = 0;
+				}
+			});
+		});
+		
+		// Actual process call
 		let wasmStartTime, wasmEndTime;
 		let status;
 		try {
-			wasmStartTime = Date.now();
-			status = plugin.process(processPtr);
+			wasmStartTime = now();
+			status = this.hostApi.pluginProcess(this.pluginPtr);
 			this.mainThreadCallbackIfNeeded();
-			wasmEndTime = Date.now();
+			wasmEndTime = now();
 		} catch (e) {
 			this.failWithError(e);
 			return false;
 		}
-		if (status == api.CLAP_PROCESS_ERROR) {
-			console.error("CLAP_PROCESS_ERROR");
-			return false;
-		}
-		
-		// Read audio buffers out again
-		outputs.forEach((output, portIndex) => {
-			let audioPort = this.audioPortsOut[portIndex];
-			if (!audioPort) { // pass through
-				let inputPort = inputs[portIndex];
-				if (inputPort && inputPort.length) {
-					output.forEach((channel, index) => {
-						// Probably a dummy one used to get event routing in the correct order - copy input across
-						channel.set(inputPort[index%inputPort.length]);
-					});
-				}
-				return;
+
+		let audioOutputPtrs = this.decodeCbor(this.hostApi.pluginProcessGetOutputs(this.pluginPtr));
+		outputs.forEach((output, outputPort) => {
+			let input = inputs[outputPort];
+			let ptrs = audioOutputPtrs[inputPort];
+			if (ptrs) {
+				// We have an output - copy from that instead
+				input = ptrs.map(ptr => {
+					return new Float32Array(this.instanceMemory.buffer).subarray(ptr, ptr + blockLength);
+				});
 			}
-			let outputPointers = allOutputPointers[portIndex];
-			output.forEach((channel, index) => {
-				index = index%audioPort.channel_count;
-				let array = api.asTyped(Float32Array, outputPointers[index], blockLength);
-				channel.set(array);
+			output.forEach((jsChannel, channelIndex) => {
+				let inputChannel = input[channelIndex%input.length];
+				jsChannel.set(inputChannel);
 			});
 		});
-
-		let jsEndTime = Date.now();
-		this.#averageJsMs += (jsEndTime - jsStartTime - this.#averageJsMs)*0.01;
-		this.#averageWasmMs += (wasmEndTime - wasmStartTime - this.#averageWasmMs)*0.01;
-
-		if (status === api.CLAP_PROCESS_SLEEP) {
-			return inputs.some(input => input.length); // continue only if there's more input
-		}
-		if (status === api.CLAP_PROCESS_TAIL) {
-			console.log("CLAP_PROCESS_TAIL not supported")
-			return inputs.some(input => input.length);
-		}
-		if (status === api.CLAP_PROCESS_CONTINUE_IF_NOT_QUIET) {
-			let energy = 0;
-			outputs.forEach(output => {
-				output.forEach(channel => {
-					channel.forEach(x => energy += x*x);
-				});
-			});
-			return (energy >= 1e-6);
-		}
+		let jsEndTime = now();
 		return true;
+//
+//		if (status == api.CLAP_PROCESS_ERROR) {
+//			console.error("CLAP_PROCESS_ERROR");
+//			return false;
+//		}
+//		
+//		this.#averageJsMs += (jsEndTime - jsStartTime - this.#averageJsMs)*0.01;
+//		this.#averageWasmMs += (wasmEndTime - wasmStartTime - this.#averageWasmMs)*0.01;
+//
+//		if (status === api.CLAP_PROCESS_SLEEP) {
+//			return inputs.some(input => input.length); // continue only if there's more input
+//		}
+//		if (status === api.CLAP_PROCESS_TAIL) {
+//			console.log("CLAP_PROCESS_TAIL not supported")
+//			return inputs.some(input => input.length);
+//		}
+//		if (status === api.CLAP_PROCESS_CONTINUE_IF_NOT_QUIET) {
+//			let energy = 0;
+//			outputs.forEach(output => {
+//				output.forEach(channel => {
+//					channel.forEach(x => energy += x*x);
+//				});
+//			});
+//			return (energy >= 1e-6);
+//		}
+//		return true;
 	}
 }
 
