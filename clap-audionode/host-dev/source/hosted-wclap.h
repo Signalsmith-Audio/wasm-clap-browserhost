@@ -8,20 +8,25 @@
 #include <vector>
 #include <iostream>
 
+namespace impl32 {
+using namespace wclap32;
+
 // Takes ownership of an Instance
 struct HostedWclap {
 	bool ok = false;
 
 	// Host structures
-	wclap32::wclap_host host;
-	wclap32::Pointer<wclap32::wclap_host_audio_ports> audioPortsExtPtr;
-	wclap32::Pointer<wclap32::wclap_host_gui> guiExtPtr;
-	wclap32::Pointer<wclap32::wclap_host_latency> latencyExtPtr;
-	wclap32::Pointer<wclap32::wclap_host_note_ports> notePortsExtPtr;
-	wclap32::Pointer<wclap32::wclap_host_params> paramsExtPtr;
-	wclap32::Pointer<wclap32::wclap_host_state> stateExtPtr;
-	wclap32::Pointer<wclap32::wclap_host_tail> tailExtPtr;
-	wclap32::Pointer<wclap32::wclap_host_webview> webviewExtPtr;
+	wclap_host host;
+	Pointer<wclap_host_audio_ports> audioPortsExtPtr;
+	Pointer<wclap_host_gui> guiExtPtr;
+	Pointer<wclap_host_latency> latencyExtPtr;
+	Pointer<wclap_host_note_ports> notePortsExtPtr;
+	Pointer<wclap_host_params> paramsExtPtr;
+	Pointer<wclap_host_state> stateExtPtr;
+	Pointer<wclap_host_tail> tailExtPtr;
+	Pointer<wclap_host_webview> webviewExtPtr;
+	wclap_input_events inputEvents;
+	wclap_output_events outputEvents;
 
 	// Instance and supporting state
 	std::unique_ptr<Instance> instance;
@@ -29,9 +34,9 @@ struct HostedWclap {
 	std::unique_ptr<wclap::MemoryArena<Instance, false>> globalArena;
 	
 	wclap::IndexLookup<HostedPlugin> pluginLookup;
-	wclap32::Pointer<wclap32::wclap_plugin_factory> pluginFactoryPtr;
+	Pointer<wclap_plugin_factory> pluginFactoryPtr;
 	
-	static wclap32::Pointer<const void> hostGetExtension32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, wclap32::Pointer<const char> extensionIdPtr) {
+	static Pointer<const void> hostGetExtension32(void *context, Pointer<const wclap_host> host, Pointer<const char> extensionIdPtr) {
 		auto &self = *(HostedWclap *)context;
 		char extensionId[256] = {};
 		self.instance->getArray(extensionIdPtr, extensionId, 255);
@@ -48,92 +53,108 @@ struct HostedWclap {
 		std::cout << "Unsupported WCLAP host extension: " << extensionId << std::endl;
 		return {0}; // no extensions for now
 	}
-	static void hostRequestRestart32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static void hostRequestRestart32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->hostRequestRestart();
 	}
-	static void hostRequestProcess32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static void hostRequestProcess32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->hostRequestProcess();
 	}
-	static void hostRequestCallback32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static void hostRequestCallback32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->hostRequestCallback();
 	}
 
-	static bool audioPortsIsRescanFlagSupported32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flag) {
+	static uint32_t inputEventsSize32(void *context, Pointer<const wclap_input_events> events) {
+		auto *plugin = getPlugin(context, events);
+		if (plugin) return plugin->inputEventsSize();
+		return 0;
+	}
+	static Pointer<const wclap_event_header> inputEventsGet32(void *context, Pointer<const wclap_input_events> events, uint32_t index) {
+		auto *plugin = getPlugin(context, events);
+		if (plugin) return plugin->inputEventsGet(index);
+		return {0};
+	}
+	static bool outputEventsTryPush32(void *context, Pointer<const wclap_output_events> events, Pointer<const wclap_event_header> event) {
+		auto *plugin = getPlugin(context, events);
+		if (plugin) return plugin->outputEventsTryPush(event);
+		return false;
+	}
+
+	static bool audioPortsIsRescanFlagSupported32(void *context, Pointer<const wclap_host> host, uint32_t flag) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) return plugin->audioPortsIsRescanFlagSupported(flag);
 		return false;
 	}
-	static void audioPortsRescan32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flags) {
+	static void audioPortsRescan32(void *context, Pointer<const wclap_host> host, uint32_t flags) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->audioPortsRescan(flags);
 	}
 
-	static void guiResizeHintsChanged32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static void guiResizeHintsChanged32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->guiResizeHintsChanged();
 	}
-	static bool guiRequestResize32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t width, uint32_t height) {
+	static bool guiRequestResize32(void *context, Pointer<const wclap_host> host, uint32_t width, uint32_t height) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) return plugin->guiRequestResize(width, height);
 		return false;
 	}
-	static bool guiRequestShow32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static bool guiRequestShow32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) return plugin->guiRequestShow();
 		return false;
 	}
-	static bool guiRequestHide32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static bool guiRequestHide32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) return plugin->guiRequestHide();
 		return false;
 	}
-	static void guiClosed32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, bool wasDestroyed) {
+	static void guiClosed32(void *context, Pointer<const wclap_host> host, bool wasDestroyed) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->guiClosed(wasDestroyed);
 	}
 	
-	static void latencyChanged32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static void latencyChanged32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->latencyChanged();
 	}
 	
-	static uint32_t notePortsSupportedDialects32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static uint32_t notePortsSupportedDialects32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) return plugin->notePortsSupportedDialects();
 		return 0;
 	}
-	static void notePortsRescan32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flags) {
+	static void notePortsRescan32(void *context, Pointer<const wclap_host> host, uint32_t flags) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->notePortsRescan(flags);
 	}
 
-	static void paramsRescan32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t flags) {
+	static void paramsRescan32(void *context, Pointer<const wclap_host> host, uint32_t flags) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->paramsRescan(flags);
 	}
-	static void paramsClear32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, uint32_t paramId, uint32_t flags) {
+	static void paramsClear32(void *context, Pointer<const wclap_host> host, uint32_t paramId, uint32_t flags) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->paramsClear(paramId, flags);
 	}
-	static void paramsRequestFlush32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static void paramsRequestFlush32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->paramsRequestFlush();
 	}
 	
-	static void stateMarkDirty32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static void stateMarkDirty32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->stateMarkDirty();
 	}
 
-	static void tailChanged32(void *context, wclap32::Pointer<const wclap32::wclap_host> host) {
+	static void tailChanged32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->tailChanged();
 	}
 
-	static bool webviewSend32(void *context, wclap32::Pointer<const wclap32::wclap_host> host, wclap32::Pointer<const void> buffer, uint32_t size) {
+	static bool webviewSend32(void *context, Pointer<const wclap_host> host, Pointer<const void> buffer, uint32_t size) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) return plugin->webviewSend(buffer, size);
 		return false;
@@ -156,38 +177,43 @@ struct HostedWclap {
 		host.request_restart = instance->registerHost32(this, hostRequestRestart32);
 		host.request_process = instance->registerHost32(this, hostRequestRestart32);
 		host.request_callback = instance->registerHost32(this, hostRequestCallback32);
+		inputEvents.ctx = {0};
+		inputEvents.size = instance->registerHost32(this, inputEventsSize32);
+		inputEvents.get = instance->registerHost32(this, inputEventsGet32);
+		outputEvents.ctx = {0};
+		outputEvents.try_push = instance->registerHost32(this, outputEventsTryPush32);
 		
 		// Host extensions - functions defined above
-		audioPortsExtPtr = globalScoped.copyAcross(wclap32::wclap_host_audio_ports{
+		audioPortsExtPtr = globalScoped.copyAcross(wclap_host_audio_ports{
 			.is_rescan_flag_supported=instance->registerHost32(this, audioPortsIsRescanFlagSupported32),
 			.rescan=instance->registerHost32(this, audioPortsRescan32),
 		});
-		guiExtPtr = globalScoped.copyAcross(wclap32::wclap_host_gui{
+		guiExtPtr = globalScoped.copyAcross(wclap_host_gui{
 			.resize_hints_changed=instance->registerHost32(this, guiResizeHintsChanged32),
 			.request_resize=instance->registerHost32(this, guiRequestResize32),
 			.request_show=instance->registerHost32(this, guiRequestShow32),
 			.request_hide=instance->registerHost32(this, guiRequestHide32),
 			.closed=instance->registerHost32(this, guiClosed32),
 		});
-		latencyExtPtr = globalScoped.copyAcross(wclap32::wclap_host_latency{
+		latencyExtPtr = globalScoped.copyAcross(wclap_host_latency{
 			.changed=instance->registerHost32(this, latencyChanged32),
 		});
-		notePortsExtPtr = globalScoped.copyAcross(wclap32::wclap_host_note_ports{
+		notePortsExtPtr = globalScoped.copyAcross(wclap_host_note_ports{
 			.supported_dialects=instance->registerHost32(this, notePortsSupportedDialects32),
 			.rescan=instance->registerHost32(this, notePortsRescan32),
 		});
-		paramsExtPtr = globalScoped.copyAcross(wclap32::wclap_host_params{
+		paramsExtPtr = globalScoped.copyAcross(wclap_host_params{
 			.rescan=instance->registerHost32(this, paramsRescan32),
 			.clear=instance->registerHost32(this, paramsClear32),
 			.request_flush=instance->registerHost32(this, paramsRequestFlush32),
 		});
-		stateExtPtr = globalScoped.copyAcross(wclap32::wclap_host_state{
+		stateExtPtr = globalScoped.copyAcross(wclap_host_state{
 			.mark_dirty=instance->registerHost32(this, stateMarkDirty32),
 		});
-		tailExtPtr = globalScoped.copyAcross(wclap32::wclap_host_tail{
+		tailExtPtr = globalScoped.copyAcross(wclap_host_tail{
 			.changed=instance->registerHost32(this, tailChanged32),
 		});
-		webviewExtPtr = globalScoped.copyAcross(wclap32::wclap_host_webview{
+		webviewExtPtr = globalScoped.copyAcross(wclap_host_webview{
 			.send=instance->registerHost32(this, webviewSend32),
 		});
 
@@ -204,7 +230,7 @@ struct HostedWclap {
 
 		// Get the plugin factory
 		pluginFactoryPtr = instance->call(entry.get_factory, scoped.writeString("clap.plugin-factory"))
-			.cast<wclap32::wclap_plugin_factory>();
+			.cast<wclap_plugin_factory>();
 		if (!pluginFactoryPtr) return;
 
 		ok = true;
@@ -259,11 +285,21 @@ struct HostedWclap {
 		return cborValue();
 	}
 	
-	static HostedPlugin * getPlugin(void *context, wclap32::Pointer<const wclap32::wclap_host> hostPtr) {
+	// Get the plugin pointer from the context pointer of various host-provided objects
+	static HostedPlugin * getPlugin(void *context, Pointer<const wclap_host> hostPtr) {
 		auto &self = *(HostedWclap *)context;
-		auto hostDataPtr = hostPtr[&wclap32::wclap_host::host_data];
-		wclap32::Pointer<void> hostData = self.instance->get(hostDataPtr);
-		return self.pluginLookup.get(int32_t(hostData.wasmPointer));
+		Pointer<void> dataPtr = self.instance->get(hostPtr[&wclap_host::host_data]);
+		return self.pluginLookup.get(int32_t(dataPtr.wasmPointer));
+	}
+	static HostedPlugin * getPlugin(void *context, Pointer<const wclap_input_events> events) {
+		auto &self = *(HostedWclap *)context;
+		Pointer<void> dataPtr = self.instance->get(events[&wclap_input_events::ctx]);
+		return self.pluginLookup.get(int32_t(dataPtr.wasmPointer));
+	}
+	static HostedPlugin * getPlugin(void *context, Pointer<const wclap_output_events> events) {
+		auto &self = *(HostedWclap *)context;
+		Pointer<void> dataPtr = self.instance->get(events[&wclap_output_events::ctx]);
+		return self.pluginLookup.get(int32_t(dataPtr.wasmPointer));
 	}
 	
 	HostedPlugin * createPlugin(const char *pluginId) {
@@ -271,8 +307,10 @@ struct HostedWclap {
 
 		// Write the host structures into WCLAP memory
 		auto hostPtr = scoped.copyAcross(host);
+		auto inputEventsPtr = scoped.copyAcross(inputEvents);
+		auto outputEventsPtr = scoped.copyAcross(outputEvents);
 		// Attempt to actually create the plugin using the plugin factory
-		auto fnPtr = pluginFactoryPtr[&wclap32::wclap_plugin_factory::create_plugin];
+		auto fnPtr = pluginFactoryPtr[&wclap_plugin_factory::create_plugin];
 		auto pluginPtr = instance->call(fnPtr, pluginFactoryPtr, hostPtr, scoped.writeString(pluginId));
 		if (!pluginPtr) {
 			std::cerr << "Failed to create WCLAP plugin: " << pluginId << "\n";
@@ -281,14 +319,21 @@ struct HostedWclap {
 
 		// `scoped.commit()` keeps the host structures above for the plugin's lifetime, and also claims the arena
 		auto *plugin = new HostedPlugin(pluginPtr, instance.get(), scoped.commit());
-		uint32_t pluginIndex = plugin->pluginIndex = pluginLookup.retain(plugin);
+		uint32_t pluginIndex = pluginLookup.retain(plugin);
+		plugin->pluginIndex = pluginIndex;
+		plugin->inputEventsPtr = inputEventsPtr;
+		plugin->outputEventsPtr = outputEventsPtr;
 		
-		// Write the plugin index into the `host.host_data` pointer
-		auto hostDataPtr = hostPtr[&wclap32::wclap_host::host_data];
-		instance->set(hostDataPtr, {pluginIndex});
+		// Write the plugin index into the context pointers
+		instance->set(hostPtr[&wclap_host::host_data], {pluginIndex});
+		instance->set(inputEventsPtr[&wclap_input_events::ctx], {pluginIndex});
+		instance->set(outputEventsPtr[&wclap_output_events::ctx], {pluginIndex});
 		
 		std::cout << "Created WCLAP plugin: " << pluginId << "\n";
 		plugin->init();
 		return plugin;
 	}
 };
+} // namespace
+
+using HostedWclap = impl32::HostedWclap;

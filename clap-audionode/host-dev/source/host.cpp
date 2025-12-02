@@ -42,7 +42,7 @@ extern "C" {
 	void pluginSetParam(HostedPlugin *plugin, uint32_t paramId, double value) {
 		return plugin->setParam(paramId, value);
 	}
-	bool pluginStart(HostedPlugin *plugin, double sRate, uint32_t minFrames, uint32_t maxFrames) {
+	CborValue * pluginStart(HostedPlugin *plugin, double sRate, uint32_t minFrames, uint32_t maxFrames) {
 		return plugin->start(sRate, minFrames, maxFrames);
 	}
 	void pluginStop(HostedPlugin *plugin) {
@@ -52,13 +52,7 @@ extern "C" {
 		return plugin->acceptEvent(header);
 	}
 
-	CborValue * pluginProcessGetInputs(HostedPlugin *plugin, uint32_t blockLength) {
-		return plugin->processGetInputs(blockLength);
-	}
-	CborValue * pluginProcess(HostedPlugin *plugin) {
-		return plugin->process();
-	}
-	CborValue * pluginProcessGetOutputs(HostedPlugin *plugin) {
-		return plugin->processGetOutputs();
+	uint32_t pluginProcess(HostedPlugin *plugin, uint32_t blockLength) {
+		return plugin->process(blockLength);
 	}
 }

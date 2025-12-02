@@ -5,18 +5,24 @@
 //__attribute__((import_module("_wclapInstance"), import_name("registerHost64")))
 //extern uint64_t _wclapInstanceRegisterHost64(const void *handle, void *context, size_t fn, const char *sig, size_t sigLength);
 
-// A WCLAP plugin and its host
-namespace wclap32 {
+namespace impl32 {
+using namespace wclap32;
 
+// A WCLAP plugin and its host
 struct HostedPlugin {
 	uint32_t pluginIndex = uint32_t(-1);
 
 	Instance *instance;
 	using Arena = wclap::MemoryArena<Instance, false>;
+	using ArenaPool = wclap::MemoryArenaPool<Instance, false>;
 	using ArenaPtr = std::unique_ptr<Arena>;
-	ArenaPtr arena;
+	ArenaPtr audioThreadArena;
+	Arena::Scoped audioThreadScope;
+	ArenaPool &arenaPool;
 		
 	Pointer<const wclap_plugin> pluginPtr;
+	Pointer<const wclap_input_events> inputEventsPtr;
+	Pointer<const wclap_output_events> outputEventsPtr;
 	wclap_plugin wclapPlugin;
 	Pointer<const wclap_plugin_audio_ports> audioPortsExtPtr;
 	Pointer<const wclap_plugin_gui> guiExtPtr;
@@ -26,6 +32,9 @@ struct HostedPlugin {
 	Pointer<const wclap_plugin_state> stateExtPtr;
 	Pointer<const wclap_plugin_tail> tailExtPtr;
 	Pointer<const wclap_plugin_webview> webviewExtPtr;
+	
+	// When active, this points to a struct in the Instance's memory, including buffers which the JS-side host knows how to fill out
+	Pointer<wclap_process> processStructPtr;
 	
 	// TODO: better queue for this
 	std::mutex pendingEventsMutex;
@@ -54,19 +63,19 @@ struct HostedPlugin {
 		return instance->call(fn, pluginPtr, args...);
 	}
 
-	HostedPlugin(Pointer<const wclap_plugin> pluginPtr, Instance *instance, ArenaPtr arena) : pluginPtr(pluginPtr), instance(instance), arena(std::move(arena)) {
+	HostedPlugin(Pointer<const wclap_plugin> pluginPtr, Instance *instance, ArenaPtr arena) : pluginPtr(pluginPtr), instance(instance), audioThreadArena(std::move(arena)), audioThreadScope(audioThreadArena->scoped()), arenaPool(audioThreadArena->pool) {
 		pendingEventBytes.reserve(8192);
-		pendingEventStarts.reserve(1024);
+		pendingEventStarts.reserve(512);
 	}
 	~HostedPlugin() {
 		if (pluginPtr) {
 			callPlugin(pluginPtr[&wclap_plugin::destroy]);
 		}
-		arena->pool.returnToPool(arena);
+		arenaPool.returnToPool(audioThreadArena);
 	}
 
 	void init() {
-		auto scoped = arena->pool.scoped();
+		auto scoped = arenaPool.scoped();
 		auto plugin = instance->get(pluginPtr);
 		callPlugin(plugin.init);
 		audioPortsExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.audio-ports")).cast<wclap_plugin_audio_ports>();
@@ -81,7 +90,7 @@ struct HostedPlugin {
 	
 	CborValue * getInfo() {
 		auto plugin = instance->get(pluginPtr);
-		auto scoped = arena->pool.scoped();
+		auto scoped = arenaPool.scoped();
 		auto cbor = getCbor();
 		cbor.openMap();
 
@@ -129,7 +138,7 @@ struct HostedPlugin {
 		addEvent32(&event.header);
 	}
 	CborValue * getParam(wclap_id paramId) {
-		auto scoped = arena->scoped();
+		auto scoped = arenaPool.scoped();
 		auto cbor = getCbor();
 
 		double value = 0;
@@ -156,7 +165,7 @@ struct HostedPlugin {
 		return cborValue();
 	}
 	CborValue * getParams() {
-		auto scoped = arena->pool.scoped();
+		auto scoped = arenaPool.scoped();
 		auto cbor = getCbor();
 		cbor.openArray();
 
@@ -192,14 +201,128 @@ struct HostedPlugin {
 		cbor.close(); // array
 		return cborValue();
 	}
-	bool start(double sRate, uint32_t minFrames, uint32_t maxFrames) {
-		if (!callPlugin(pluginPtr[&wclap_plugin::activate], sRate, minFrames, maxFrames)) return false;
-		if (!callPlugin(pluginPtr[&wclap_plugin::start_processing])) return false;
-		return true;
+	CborValue * start(double sRate, uint32_t minFrames, uint32_t maxFrames) {
+		auto cbor = getCbor();
+		if (!callPlugin(pluginPtr[&wclap_plugin::activate], sRate, minFrames, maxFrames)) {
+			cbor.addNull();
+			return cborValue();
+		}
+		if (!callPlugin(pluginPtr[&wclap_plugin::start_processing])) {
+			cbor.addNull();
+			return cborValue();
+		}
+
+		// Set up a single process struct (to be re-used each time) with sufficiently big buffers
+		wclap_process processStruct{
+			.steady_time=-1,
+			.frames_count=0,
+			.transport={0},
+			.audio_inputs={0},
+			.audio_outputs={0},
+			.audio_inputs_count=0,
+			.audio_outputs_count=0,
+			.in_events=inputEventsPtr,
+			.out_events=outputEventsPtr
+		};
+		audioThreadScope.reset();
+
+		if (audioPortsExtPtr) {
+			wclap_audio_port_info portInfo;
+			auto portInfoPtr = audioThreadScope.copyAcross(portInfo);
+
+			auto audioPorts = instance->get(audioPortsExtPtr);
+			auto inputPortCount = callPlugin(audioPorts.count, true);
+			processStruct.audio_inputs_count = inputPortCount;
+			auto inputBuffersPtr = audioThreadScope.array<wclap_audio_buffer>(inputPortCount);
+			processStruct.audio_inputs = inputBuffersPtr;
+			for (uint32_t p = 0; p < inputPortCount; ++p) {
+				callPlugin(audioPorts.get, p, true, portInfoPtr);
+				portInfo = instance->get(portInfoPtr);
+
+				auto channelCount = portInfo.channel_count;
+				auto data32Ptr = audioThreadScope.array<Pointer<float>>(channelCount);
+				for (uint32_t c = 0; c < channelCount; ++c) {
+					instance->set(data32Ptr, audioThreadScope.array<float>(maxFrames), c);
+				}
+				wclap_audio_buffer inputBuffer{
+					.data32=data32Ptr,
+					.data64={0},
+					.channel_count=channelCount,
+					.latency=0,
+					.constant_mask=0
+				};
+				instance->set(inputBuffersPtr, inputBuffer, p);
+			}
+			auto outputPortCount = callPlugin(audioPorts.count, false);
+			processStruct.audio_outputs_count = outputPortCount;
+			processStruct.audio_outputs = audioThreadScope.array<wclap_audio_buffer>(outputPortCount);
+			for (uint32_t p = 0; p < outputPortCount; ++p) {
+				callPlugin(audioPorts.get, p, true, portInfoPtr);
+				portInfo = instance->get(portInfoPtr);
+
+				auto channelCount = portInfo.channel_count;
+				auto data32Ptr = audioThreadScope.array<Pointer<float>>(channelCount);
+				for (uint32_t c = 0; c < channelCount; ++c) {
+					instance->set(data32Ptr, audioThreadScope.array<float>(maxFrames), c);
+				}
+				wclap_audio_buffer outputBuffer{
+					.data32=data32Ptr,
+					.data64={0},
+					.channel_count=channelCount,
+					.latency=0,
+					.constant_mask=0
+				};
+				instance->set(processStruct.audio_outputs, outputBuffer, p);
+			}
+		}
+		processStructPtr = audioThreadScope.copyAcross(processStruct);
+		
+		// Also return pointers to those buffers
+		cbor.openMap(2);
+		cbor.addUtf8("inputs");
+		cbor.openArray(processStruct.audio_inputs_count);
+		for (uint32_t i = 0; i < processStruct.audio_inputs_count; ++i) {
+			auto buffer = instance->get(processStruct.audio_inputs, i);
+			cbor.openArray(buffer.channel_count);
+			for (uint32_t c = 0; c < buffer.channel_count; ++c) {
+				cbor.addInt(instance->get(buffer.data32, c).wasmPointer);
+			}
+		}
+		cbor.addUtf8("outputs");
+		cbor.openArray(processStruct.audio_outputs_count);
+		for (uint32_t i = 0; i < processStruct.audio_outputs_count; ++i) {
+			auto buffer = instance->get(processStruct.audio_outputs, i);
+			cbor.openArray(buffer.channel_count);
+			for (uint32_t c = 0; c < buffer.channel_count; ++c) {
+				cbor.addInt(instance->get(buffer.data32, c).wasmPointer);
+			}
+		}
+		return cborValue();
 	}
 	void stop() {
 		callPlugin(pluginPtr[&wclap_plugin::stop_processing]);
 		callPlugin(pluginPtr[&wclap_plugin::deactivate]);
+	}
+	
+	uint32_t process(uint32_t blockLength) {
+LOG_EXPR(blockLength);
+auto inputBuffer = instance->get(instance->get(processStructPtr[&wclap_process::audio_inputs], 0));
+double inputSample = instance->get(instance->get(inputBuffer.data32));
+auto outputBuffer = instance->get(instance->get(processStructPtr[&wclap_process::audio_outputs], 0));
+double outputSample = instance->get(instance->get(outputBuffer.data32));
+LOG_EXPR(inputSample);
+LOG_EXPR(outputSample);
+		instance->set(processStructPtr[&wclap_process::frames_count], blockLength);
+		return callPlugin(pluginPtr[&wclap_plugin::process], processStructPtr);
+	}
+	uint32_t inputEventsSize() {
+		return 0;
+	}
+	Pointer<const wclap_event_header> inputEventsGet(uint32_t index) {
+		return {0};
+	}
+	bool outputEventsTryPush(Pointer<const wclap_event_header> event) {
+		return false;
 	}
 
 	void hostRequestRestart() {
@@ -278,7 +401,7 @@ struct HostedPlugin {
 		if (!webviewExtPtr) return;
 
 		// TODO: send directly to the Instance's memory, instead of bouncing through the host memory
-		auto scoped = arena->scoped();
+		auto scoped = arenaPool.scoped();
 		auto ptr = scoped.array<unsigned char>(length);
 		instance->setArray(ptr, bytes, length);
 
@@ -286,5 +409,5 @@ struct HostedPlugin {
 	}
 };
 
-}
-using HostedPlugin = wclap32::HostedPlugin;
+}// namespace
+using HostedPlugin = impl32::HostedPlugin;

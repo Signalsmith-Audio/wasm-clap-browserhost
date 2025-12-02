@@ -24,6 +24,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 	// Could be shared amongst all plugins from the same module
 	hostedWclapPtr; // The specific WCLAP model (created from an `Instance *` in C++)
 	instanceMemory; // We read/write sample data directly, to avoid copying in/out of the host
+	instanceAudioPointers; // pointers to read/write audio in the Instance memory
 
 	// specific to this module
 	pluginPtr;
@@ -95,7 +96,8 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			if (!this.pluginPtr) {
 				throw this.fatalError = Error("Failed to create plugin: " + pluginId);
 			}
-			if (!hostApi.pluginStart(this.pluginPtr, globalThis.sampleRate, 0, this.maxFramesCount)) {
+			this.instanceAudioPointers = this.decodeCbor(hostApi.pluginStart(this.pluginPtr, globalThis.sampleRate, 0, this.maxFramesCount));
+			if (!this.instanceAudioPointers) {
 				throw this.fatalError = Error("Failed to start plugin: " + pluginId);
 			}
 			this.running = true;
@@ -215,8 +217,8 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		
 		this.writePendingEvents();
 		
-		let audioInputPtrs = this.decodeCbor(this.hostApi.pluginProcessGetInputs(this.pluginPtr, blockLength));
-		audioInputPtrs.forEach((ptrs, inputPort) => {
+		// Copy audio input
+		this.instanceAudioPointers.inputs.forEach((ptrs, inputPort) => {
 			let jsInput = inputs[inputPort];
 			ptrs.forEach((ptr, channelIndex) => {
 				let instanceArray = new Float32Array(this.instanceMemory.buffer).subarray(ptr, ptr + blockLength);
@@ -234,7 +236,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		let status;
 		try {
 			wasmStartTime = now();
-			status = this.hostApi.pluginProcess(this.pluginPtr);
+			status = this.hostApi.pluginProcess(this.pluginPtr, blockLength);
 			this.mainThreadCallbackIfNeeded();
 			wasmEndTime = now();
 		} catch (e) {
@@ -242,10 +244,10 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			return false;
 		}
 
-		let audioOutputPtrs = this.decodeCbor(this.hostApi.pluginProcessGetOutputs(this.pluginPtr));
+		// Copy audio output
 		outputs.forEach((output, outputPort) => {
 			let input = inputs[outputPort];
-			let ptrs = audioOutputPtrs[inputPort];
+			let ptrs = this.instanceAudioPointers.outputs[outputPort];
 			if (ptrs) {
 				// We have an output - copy from that instead
 				input = ptrs.map(ptr => {
