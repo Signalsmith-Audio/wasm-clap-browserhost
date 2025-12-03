@@ -2,8 +2,10 @@
 
 #include "./common.h"
 
-//__attribute__((import_module("_wclapInstance"), import_name("registerHost64")))
-//extern uint64_t _wclapInstanceRegisterHost64(const void *handle, void *context, size_t fn, const char *sig, size_t sigLength);
+#include <algorithm> // we need stable_sort
+
+__attribute__((import_module("env"), import_name("eventsOutTryPush")))
+extern bool pluginOutputEventsTryPush32(const void *plugin, uint32_t remotePtr, uint32_t length);
 
 namespace impl32 {
 using namespace wclap32;
@@ -36,26 +38,66 @@ struct HostedPlugin {
 	// When active, this points to a struct in the Instance's memory, including buffers which the JS-side host knows how to fill out
 	Pointer<wclap_process> processStructPtr;
 	
-	// TODO: better queue for this
-	std::mutex pendingEventsMutex;
+	// TODO: lock-free queue to let us `addEvent32` safely
+	std::recursive_mutex pendingEventsMutex;
 	std::vector<unsigned char> pendingEventBytes;
 	std::vector<size_t> pendingEventStarts;
+	struct CopiedEvent {
+		uint32_t time;
+		Pointer<wclap_event_header> pointer;
+	};
+	std::vector<CopiedEvent> copiedInputEventPtrs;
 	void addEvent32(const wclap_event_header *event) {
-		std::unique_lock<std::mutex> lock(pendingEventsMutex);
+		std::unique_lock<std::recursive_mutex> lock{pendingEventsMutex};
 		auto index = pendingEventBytes.size();
+		while (index%alignof(wclap_event_header)) ++index;
+		
 		pendingEventStarts.push_back(index);
 		pendingEventBytes.resize(index + event->size);
 		std::memcpy(pendingEventBytes.data() + index, event, event->size);
 	}
 	bool acceptEvent(const void *ptr) {
 		// These are events coming from other plugins.
-		// It's our job to only pass through appropriate events - i.e. only events which require no 32/64 translation, or effect-specific IDs / cookie pointers.
+		// As the host, it's our job to only pass through appropriate events - in particular, only events which require no 32/64 translation, or effect-specific IDs / cookie pointers.
 		auto *event = (const wclap_event_header *)ptr;
 		if (event->type == WCLAP_EVENT_NOTE_ON || event->type == WCLAP_EVENT_NOTE_OFF || event->type == WCLAP_EVENT_NOTE_CHOKE || event->type == WCLAP_EVENT_MIDI || event->type == WCLAP_EVENT_MIDI_SYSEX || event->type == WCLAP_EVENT_MIDI2) {
 			addEvent32(event);
 			return true;
 		}
 		return false;
+	}
+	wclap_event_header * getEvent(size_t pendingIndex) {
+		std::unique_lock<std::recursive_mutex> lock{pendingEventsMutex};
+		size_t start = pendingEventStarts[pendingIndex];
+		return (wclap_event_header *)(pendingEventBytes.data() + start);
+	}
+	void copyEvent(Arena::Scoped &scoped, size_t pendingIndex) {
+		std::unique_lock<std::recursive_mutex> lock{pendingEventsMutex};
+		auto *event = getEvent(pendingIndex);
+		
+		// Copy bytes across, store remote pointer
+		auto eventPtr = scoped.reserve(event->size, alignof(wclap_event_header));
+		instance->setArray(eventPtr.cast<unsigned char>(), (unsigned char *)event, event->size);
+		copiedInputEventPtrs.push_back(CopiedEvent{event->time, eventPtr.cast<wclap_event_header>()});
+		
+		// Remove start from the list
+		pendingEventStarts.erase(pendingEventStarts.begin() + pendingIndex);
+		if (pendingEventStarts.empty()) {
+			// If this was the last event, clear the pending bytes as well
+			pendingEventBytes.clear();
+		}
+	}
+	void sortCopiedEvents() {
+		std::unique_lock<std::recursive_mutex> lock{pendingEventsMutex};
+		std::stable_sort(copiedInputEventPtrs.begin(), copiedInputEventPtrs.end(), [](const CopiedEvent &a, const CopiedEvent &b){
+			return a.time < b.time;
+		});
+	}
+	void clearEvents() {
+		std::unique_lock<std::recursive_mutex> lock{pendingEventsMutex};
+		pendingEventStarts.clear();
+		pendingEventBytes.clear();
+		copiedInputEventPtrs.clear();
 	}
 
 	template<class FnPtr, class... Args>
@@ -66,6 +108,7 @@ struct HostedPlugin {
 	HostedPlugin(Pointer<const wclap_plugin> pluginPtr, Instance *instance, ArenaPtr arena) : pluginPtr(pluginPtr), instance(instance), audioThreadArena(std::move(arena)), audioThreadScope(audioThreadArena->scoped()), arenaPool(audioThreadArena->pool) {
 		pendingEventBytes.reserve(8192);
 		pendingEventStarts.reserve(512);
+		copiedInputEventPtrs.reserve(512);
 	}
 	~HostedPlugin() {
 		if (pluginPtr) {
@@ -305,24 +348,45 @@ struct HostedPlugin {
 	}
 	
 	uint32_t process(uint32_t blockLength) {
-LOG_EXPR(blockLength);
-auto inputBuffer = instance->get(instance->get(processStructPtr[&wclap_process::audio_inputs], 0));
-double inputSample = instance->get(instance->get(inputBuffer.data32));
-auto outputBuffer = instance->get(instance->get(processStructPtr[&wclap_process::audio_outputs], 0));
-double outputSample = instance->get(instance->get(outputBuffer.data32));
-LOG_EXPR(inputSample);
-LOG_EXPR(outputSample);
+		std::unique_lock<std::recursive_mutex> lock{pendingEventsMutex};
+		auto scoped = audioThreadArena->scoped();
+		while (!pendingEventStarts.empty()) {
+			copyEvent(scoped, pendingEventStarts.size() - 1);
+		}
+		sortCopiedEvents();
+	
 		instance->set(processStructPtr[&wclap_process::frames_count], blockLength);
-		return callPlugin(pluginPtr[&wclap_plugin::process], processStructPtr);
+		auto status = callPlugin(pluginPtr[&wclap_plugin::process], processStructPtr);
+		clearEvents();
+		return status;
 	}
 	uint32_t inputEventsSize() {
-		return 0;
+		std::unique_lock<std::recursive_mutex> lock{pendingEventsMutex};
+		return uint32_t(copiedInputEventPtrs.size());
 	}
 	Pointer<const wclap_event_header> inputEventsGet(uint32_t index) {
-		return {0};
+		std::unique_lock<std::recursive_mutex> lock{pendingEventsMutex};
+		if (index >= copiedInputEventPtrs.size()) return {0};
+		return copiedInputEventPtrs[index].pointer;
 	}
 	bool outputEventsTryPush(Pointer<const wclap_event_header> event) {
-		return false;
+		auto eventSize = instance->get(event[&wclap_event_header::size]);
+		return pluginOutputEventsTryPush32(this, event.wasmPointer, eventSize);
+	}
+	void paramsFlush() {
+		if (!paramsExtPtr) return;
+		std::unique_lock<std::recursive_mutex> lock{pendingEventsMutex};
+		
+		auto scoped = audioThreadArena->scoped();
+		for (size_t i = pendingEventStarts.size(); i-- > 0;) {
+			auto *event = getEvent(i);
+			if (event->type == WCLAP_EVENT_PARAM_VALUE || event->type == WCLAP_EVENT_PARAM_MOD || event->type == WCLAP_EVENT_PARAM_GESTURE_BEGIN || event->type == WCLAP_EVENT_PARAM_GESTURE_END) {
+				copyEvent(scoped, i);
+			}
+		}
+		sortCopiedEvents();
+		
+		callPlugin(paramsExtPtr[&wclap_plugin_params::flush], inputEventsPtr, outputEventsPtr);
 	}
 
 	void hostRequestRestart() {

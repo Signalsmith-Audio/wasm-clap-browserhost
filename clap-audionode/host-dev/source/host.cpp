@@ -42,6 +42,9 @@ extern "C" {
 	void pluginSetParam(HostedPlugin *plugin, uint32_t paramId, double value) {
 		return plugin->setParam(paramId, value);
 	}
+	void pluginParamsFlush(HostedPlugin *plugin) {
+		return plugin->paramsFlush();
+	}
 	CborValue * pluginStart(HostedPlugin *plugin, double sRate, uint32_t minFrames, uint32_t maxFrames) {
 		return plugin->start(sRate, minFrames, maxFrames);
 	}

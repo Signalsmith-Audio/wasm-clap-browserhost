@@ -12,6 +12,13 @@ if (!globalThis.clapRouting) {
 }
 
 let now = (typeof performance === 'object') ? performance.now.bind(performance) : Date.now.bind(Date);
+let cpuAveragePeriod = (typeof performance === 'object') ? 50 : 10000; // 150ms or 30s @ 44.1kHz
+function setTimerSharedArrayBuffer(sharedArrayBuffer) {
+	// We have a timer thread which is just spinning, putting performance.now() into shared memory
+	let dv = new DataView(sharedArrayBuffer);
+	now = _ => dv.getFloat32(0);
+	cpuAveragePeriod = 50;
+}
 
 class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 	inputChannelCounts = [];
@@ -70,7 +77,15 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 
 		(async init => {
 			// Create one Host for every AudioNode (for now) - could be global in future
-			this.host = await startHost(init.host, hostImports());
+			let imports = {
+				env: {
+					eventsOutTryPush: (pluginPtr, ptr, length) => {
+						console.log("output event:", pluginPtr, ptr, length);
+					}
+				}
+			};
+			Object.assign(imports, hostImports());
+			this.host = await startHost(init.host, imports);
 			let hostApi = this.hostApi = this.host.hostInstance.exports;
 			
 			// This particular WASM module
@@ -120,6 +135,9 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 				}
 				let [requestId, method, args] = data;
 				if (this.fatalError) return this.port.postMessage([requestId, this.fatalError]);
+				if (requestId == 'timer-sharedArrayBuffer') {
+					return setTimerSharedArrayBuffer(method);
+				}
 
 				try {
 					let result = await this.remoteMethods[method].call(this, ...args);
@@ -141,7 +159,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 	}
 	
 	mainThreadCallbackIfNeeded() {
-		console.log("mainThreadCallbackIfNeeded()");
+//		console.log("mainThreadCallbackIfNeeded()");
 //		throw Error("not implemented");
 	}
 	
@@ -179,13 +197,13 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		loadState(stateArray) {
 			throw Error("not implemented");
 		},
-		setParam(id, value) {
+		setParam(paramId, value) {
 			this.hostApi.pluginSetParam(this.pluginPtr, paramId, value);
 
 			// If we're being called here, then it's single-threaded, so there's no reason not to immediately flush
-			this.hostApi.paramFlush(this.pluginPtr);
+			this.hostApi.pluginParamsFlush(this.pluginPtr);
 			
-			return this.remoteMethods.getParam.call(this, id);
+			return this.remoteMethods.getParam.call(this, paramId);
 		},
 		getParam(paramId) {
 			return this.decodeCbor(this.hostApi.pluginGetParam(this.pluginPtr, paramId));
@@ -198,7 +216,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			return params;
 		},
 		performance() {
-			return {js: this.#averageJsMs, wasm: this.#averageWasmMs};
+			return {js: this.#averageJsMs, wasm: this.#averageWasmMs, block: this.#averageBlockMs};
 		},
 		getResource(path) {
 			throw Error("not implemented");
@@ -208,6 +226,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 
 	#averageJsMs = 0;
 	#averageWasmMs = 0;
+	#averageBlockMs = 0;
 	
 	process(inputs, outputs, parameters) {
 		let jsStartTime = now();
@@ -221,7 +240,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		this.instanceAudioPointers.inputs.forEach((ptrs, inputPort) => {
 			let jsInput = inputs[inputPort];
 			ptrs.forEach((ptr, channelIndex) => {
-				let instanceArray = new Float32Array(this.instanceMemory.buffer).subarray(ptr, ptr + blockLength);
+				let instanceArray = new Float32Array(this.instanceMemory.buffer, ptr, blockLength);
 				if (jsInput && jsInput.length > 0) {
 					let jsChannel = jsInput[channelIndex%jsInput.length];
 					instanceArray.set(jsChannel);
@@ -233,16 +252,16 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		
 		// Actual process call
 		let wasmStartTime, wasmEndTime;
-		let status;
-		try {
+		let processStatus;
+//		try {
 			wasmStartTime = now();
-			status = this.hostApi.pluginProcess(this.pluginPtr, blockLength);
+			processStatus = this.hostApi.pluginProcess(this.pluginPtr, blockLength);
 			this.mainThreadCallbackIfNeeded();
 			wasmEndTime = now();
-		} catch (e) {
-			this.failWithError(e);
-			return false;
-		}
+//		} catch (e) {
+//			this.failWithError(e);
+//			return false;
+//		}
 
 		// Copy audio output
 		outputs.forEach((output, outputPort) => {
@@ -251,7 +270,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			if (ptrs) {
 				// We have an output - copy from that instead
 				input = ptrs.map(ptr => {
-					return new Float32Array(this.instanceMemory.buffer).subarray(ptr, ptr + blockLength);
+					return new Float32Array(this.instanceMemory.buffer, ptr, blockLength);
 				});
 			}
 			output.forEach((jsChannel, channelIndex) => {
@@ -259,34 +278,32 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 				jsChannel.set(inputChannel);
 			});
 		});
+
 		let jsEndTime = now();
+
+		let slew = 1/cpuAveragePeriod;
+		this.#averageJsMs += (jsEndTime - jsStartTime - this.#averageJsMs)*slew;
+		this.#averageWasmMs += (wasmEndTime - wasmStartTime - this.#averageWasmMs)*slew;
+		this.#averageBlockMs += (blockLength*1000/sampleRate - this.#averageBlockMs)*slew;
+
+		if (processStatus == 0/*CLAP_PROCESS_ERROR*/) {
+			console.error("CLAP_PROCESS_ERROR");
+			return false;
+		} else if (processStatus === 2/*CLAP_PROCESS_CONTINUE_IF_NOT_QUIET*/) {
+			let energy = 0;
+			outputs.forEach(output => {
+				output.forEach(channel => {
+					channel.forEach(x => energy += x*x);
+				});
+			});
+			return (energy >= 1e-6);
+		} else if (processStatus === 3/*CLAP_PROCESS_TAIL*/) {
+			console.log("CLAP_PROCESS_TAIL not supported")
+			return inputs.some(input => input.length);
+		} else if (processStatus === 4/*CLAP_PROCESS_SLEEP*/) {
+			return inputs.some(input => input.length); // continue only if there's more input
+		}
 		return true;
-//
-//		if (status == api.CLAP_PROCESS_ERROR) {
-//			console.error("CLAP_PROCESS_ERROR");
-//			return false;
-//		}
-//		
-//		this.#averageJsMs += (jsEndTime - jsStartTime - this.#averageJsMs)*0.01;
-//		this.#averageWasmMs += (wasmEndTime - wasmStartTime - this.#averageWasmMs)*0.01;
-//
-//		if (status === api.CLAP_PROCESS_SLEEP) {
-//			return inputs.some(input => input.length); // continue only if there's more input
-//		}
-//		if (status === api.CLAP_PROCESS_TAIL) {
-//			console.log("CLAP_PROCESS_TAIL not supported")
-//			return inputs.some(input => input.length);
-//		}
-//		if (status === api.CLAP_PROCESS_CONTINUE_IF_NOT_QUIET) {
-//			let energy = 0;
-//			outputs.forEach(output => {
-//				output.forEach(channel => {
-//					channel.forEach(x => energy += x*x);
-//				});
-//			});
-//			return (energy >= 1e-6);
-//		}
-//		return true;
 	}
 }
 

@@ -231,7 +231,7 @@
 		<script type="module">
 			import ClapAudioNode from "./clap-audionode/clap-audionode.mjs";
 			import _for_debug from "./clap-audionode/clap-audioworkletprocessor.mjs"; // just to sanity-check syntax
-
+			
 			async function startPage() {
 				let pageProxy = await pageProxyReady;
 
@@ -322,7 +322,10 @@
 				};
 				
 				let wasmUrl = queryParams.get('module') || 'plugin/basics-1_0_0.wclap.tar.gz';
-				let module = new ClapAudioNode(wasmUrl);
+				let module = new ClapAudioNode({
+					url: wasmUrl,
+					timerWorklet: true // for more accurate CPU estimate
+				});
 				let pluginId = queryParams.get('plugin') || null;
 				await module.plugins().then(plugins => {
 					let select = $('#select-plugin-id');
@@ -496,9 +499,8 @@
 				
 				setInterval(async _ => {
 					let ms = await effectNode.performance();
-					let blockMs = 128*1000/audioContext.sampleRate;
-					let ratioWasm = ms.wasm/blockMs;
-					let ratioJs = ms.js/blockMs - ratioWasm;
+					let ratioWasm = ms.wasm/ms.block;
+					let ratioJs = ms.js/ms.block - ratioWasm;
 					$('#cpu').textContent = `${(ratioWasm*100).toFixed(1)}%\n${(ratioJs*100).toFixed(1)}%`;
 				}, 1000);
 			}

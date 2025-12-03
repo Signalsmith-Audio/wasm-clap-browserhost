@@ -9,18 +9,42 @@ export default class ClapAudioNode {
 	#m_pluginConfigPromise;
 	
 	static #m_routingId = Symbol();
+	static #m_timerSharedArrayBuffer;
+	
+	static useTimerWorklet = false;
 
 	constructor(wclapOptions) {
-		if (typeof options === 'string') {
-			options = {url: new URL(options, document.baseURI).href};
+		if (typeof wclapOptions === 'string') {
+			wclapOptions = {url: new URL(wclapOptions, document.baseURI).href};
 		}
 		// This particular host gets instantiated once per plugin, but that doesn't need to be true in general
 		this.#m_hostConfigPromise = getHost(new URL("./host.wasm", import.meta.url).href);
 		this.#m_pluginConfigPromise = getWclap(wclapOptions);
+		
+		// Optional timer thread to get more accurate CPU measurements
+		if (wclapOptions?.timerWorklet && !ClapAudioNode.#m_timerSharedArrayBuffer) {
+			let workerJs = new Blob([`this.onmessage = e => {`,
+				`console.log("CLAP AudioNode performance timer starting");`,
+				`let dv = new DataView(e.data);`,
+				`while (1) dv.setFloat32(0, performance.now());`,
+			`};`], {type: 'application/javascript'});
+			let worker = new Worker(URL.createObjectURL(workerJs), {name: "CLAP AudioNode performance timer"});
+			let buffer = ClapAudioNode.#m_timerSharedArrayBuffer = new SharedArrayBuffer(8);
+			new DataView(buffer).setFloat32(0, performance.now());
+			worker.postMessage(buffer);
+		}
 	}
 	
 	async plugins() {
-		let host = await startHost(await this.#m_hostConfigPromise, hostImports());
+		let imports = {
+			env: {
+				eventsOutTryPush: (pluginPtr, ptr, length) => {
+					throw Error("Why is it trying to push events at this point?");
+				}
+			}
+		};
+		Object.assign(imports, hostImports());
+		let host = await startHost(await this.#m_hostConfigPromise, imports);
 		let hostApi = host.hostInstance.exports;
 		let wclapInstance = await host.startWclap(await this.#m_pluginConfigPromise);
 
@@ -71,6 +95,11 @@ export default class ClapAudioNode {
 		};
 
 		let effectNode = new AudioWorkletNode(audioContext, 'audioworkletprocessor-clap', nodeOptions);
+
+		// Connect to timer worker, if running
+		if (ClapAudioNode.#m_timerSharedArrayBuffer) {
+			effectNode.port.postMessage(["timer-sharedArrayBuffer", ClapAudioNode.#m_timerSharedArrayBuffer]);
+		}
 
 		let responseMap = Object.create(null);
 		let idCounter = 0;
