@@ -32,6 +32,8 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 	hostedWclapPtr; // The specific WCLAP model (created from an `Instance *` in C++)
 	instanceMemory; // We read/write sample data directly, to avoid copying in/out of the host
 	instanceAudioPointers; // pointers to read/write audio in the Instance memory
+	instanceSingleThreaded = true;
+	instancePluginMap = {};
 
 	// specific to this module
 	pluginPtr;
@@ -67,7 +69,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		array.set(bytes);
 		return returnCbor ? ptr : bufferPtr;
 	}
-
+	
 	constructor(options) {
 		super();
 		this.port.onmessageerror = e => {
@@ -77,14 +79,27 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 
 		(async init => {
 			// Create one Host for every AudioNode (for now) - could be global in future
-			let imports = {
-				env: {
-					eventsOutTryPush: (pluginPtr, ptr, length) => {
-						console.log("output event:", pluginPtr, ptr, length);
-					}
+			let imports = hostImports();
+			Object.assign(imports.env, {
+				webviewSend: (pluginPtr, ptr, length) => {
+					let processor = this.instancePluginMap[pluginPtr];
+					let bytes = new Uint8Array(this.instanceMemory.buffer, ptr, length).slice();
+					processor.webviewSend(bytes);
+				},
+				eventsOutTryPush: (pluginPtr, ptr, length) => {
+					let processor = this.instancePluginMap[pluginPtr];
+					let bytes = new Uint8Array(this.instanceMemory.buffer, ptr, length).slice();
+					processor.outputEvent(bytes);
+				},
+				stateMarkDirty: (pluginPtr) => {
+					let processor = this.instancePluginMap[pluginPtr];
+					processor.port.postMessage(['state_mark_dirty', null]);
+				},
+				paramsRescan: (pluginPtr, flags) => {
+					let processor = this.instancePluginMap[pluginPtr];
+					processor.port.postMessage(['params_rescan', flags]);
 				}
-			};
-			Object.assign(imports, hostImports());
+			});
 			this.host = await startHost(init.host, imports);
 			let hostApi = this.hostApi = this.host.hostInstance.exports;
 			
@@ -111,6 +126,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			if (!this.pluginPtr) {
 				throw this.fatalError = Error("Failed to create plugin: " + pluginId);
 			}
+			this.instancePluginMap[this.pluginPtr] = this; // this would be removed whenever we call `hostApi.destroyPlugin()` later
 			this.instanceAudioPointers = this.decodeCbor(hostApi.pluginStart(this.pluginPtr, globalThis.sampleRate, 0, this.maxFramesCount));
 			if (!this.instanceAudioPointers) {
 				throw this.fatalError = Error("Failed to start plugin: " + pluginId);
@@ -126,7 +142,6 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 
 			// subsequent messages are either proxied method calls, or ArrayBuffer messages from the webview
 			this.port.onmessage = async event => {
-				
 				let data = event.data;
 				if (data instanceof ArrayBuffer) {
 					let bytes = new Uint8Array(data);
@@ -142,7 +157,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 				try {
 					let result = await this.remoteMethods[method].call(this, ...args);
 					this.port.postMessage([requestId, null, result]);
-					this.mainThreadCallbackIfNeeded();
+					if (this.instanceSingleThreaded) this.mainThreadCallback();
 				} catch (e) {
 					this.failWithError(e);
 					this.port.postMessage([requestId, e]);
@@ -157,23 +172,33 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		console.error(e);
 		this.fatalError = e;
 	}
-	
-	mainThreadCallbackIfNeeded() {
-//		console.log("mainThreadCallbackIfNeeded()");
-//		throw Error("not implemented");
+
+	mainThreadCallback() {
+		this.hostApi.pluginMainThread(this.pluginPtr);
 	}
 	
 	// Hands input events to the plugin, and clears the list
 	writePendingEvents() {
 		let plugin = this.clapPlugin;
 		globalThis.clapRouting[this.routingId].events.forEach(bytes => {
-			hostApi.pluginAcceptEvent(this.pluginPtr, this.sendBytes(bytes));
+			this.hostApi.pluginAcceptEvent(this.pluginPtr, this.sendBytes(bytes));
 		});
 		globalThis.clapRouting[this.routingId].events = [];
 	}
 	
 	eventTargets = {};
-	
+	outputEvent(eventBytes) {
+		for (let key in this.eventTargets) {
+			if (globalThis.clapRouting[key]) {
+				globalThis.clapRouting[key].events.push(eventBytes);
+			}
+		}
+	}
+
+	webviewSend(messageBytes) {
+		this.port.postMessage(messageBytes.buffer);
+	}
+
 	remoteMethods = {
 		pause() {
 			this.running = false;
@@ -190,17 +215,17 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			}
 		},
 		saveState() {
-			throw Error("not implemented");
-			//let stateArray = this.streamOutput.result.slice(); // TODO: transfer ownership, to avoid allocation/GC from this
-			//return stateArray.buffer;
+			// TODO: transfer ownership, to avoid allocation/GC from this
+			return this.decodeCbor(this.hostApi.pluginSaveState(this.pluginPtr));
 		},
 		loadState(stateArray) {
-			throw Error("not implemented");
+			let bytes = new Uint8Array(stateArray);
+			return this.hostApi.pluginLoadState(this.pluginPtr, this.sendBytes(bytes), bytes.length);
 		},
 		setParam(paramId, value) {
 			this.hostApi.pluginSetParam(this.pluginPtr, paramId, value);
 
-			// If we're being called here, then it's single-threaded, so there's no reason not to immediately flush
+			// If we're being called here (in the AudioWorklet), then it's single-threaded, so there's no reason not to immediately flush
 			this.hostApi.pluginParamsFlush(this.pluginPtr);
 			
 			return this.remoteMethods.getParam.call(this, paramId);
@@ -219,8 +244,12 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			return {js: this.#averageJsMs, wasm: this.#averageWasmMs, block: this.#averageBlockMs};
 		},
 		getResource(path) {
-			throw Error("not implemented");
-//			return {bytes: result.buffer, type: mimeString};
+			let bytes = new Uint8Array(path.length);
+			for (let i = 0; i < path.length; ++i) bytes[i] = path.charCodeAt(i);
+			return this.decodeCbor(this.hostApi.pluginGetResource(this.pluginPtr, this.sendBytes(bytes), bytes.length));
+		},
+		webviewOpen(isOpen, isVisible) {
+			// TODO: let the `clap.gui` extension know
 		}
 	};
 
@@ -253,30 +282,32 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		// Actual process call
 		let wasmStartTime, wasmEndTime;
 		let processStatus;
-//		try {
+		try {
 			wasmStartTime = now();
 			processStatus = this.hostApi.pluginProcess(this.pluginPtr, blockLength);
-			this.mainThreadCallbackIfNeeded();
+			if (this.instanceSingleThreaded) this.mainThreadCallback();
 			wasmEndTime = now();
-//		} catch (e) {
-//			this.failWithError(e);
-//			return false;
-//		}
+		} catch (e) {
+			this.failWithError(e);
+			return false;
+		}
 
 		// Copy audio output
 		outputs.forEach((output, outputPort) => {
 			let input = inputs[outputPort];
 			let ptrs = this.instanceAudioPointers.outputs[outputPort];
-			if (ptrs) {
+			if (ptrs && ptrs.length) {
 				// We have an output - copy from that instead
 				input = ptrs.map(ptr => {
 					return new Float32Array(this.instanceMemory.buffer, ptr, blockLength);
 				});
 			}
-			output.forEach((jsChannel, channelIndex) => {
-				let inputChannel = input[channelIndex%input.length];
-				jsChannel.set(inputChannel);
-			});
+			if (input.length) {
+				output.forEach((jsChannel, channelIndex) => {
+					let inputChannel = input[channelIndex%input.length];
+					jsChannel.set(inputChannel);
+				});
+			}
 		});
 
 		let jsEndTime = now();

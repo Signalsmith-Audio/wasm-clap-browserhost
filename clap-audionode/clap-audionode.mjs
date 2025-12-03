@@ -36,15 +36,7 @@ export default class ClapAudioNode {
 	}
 	
 	async plugins() {
-		let imports = {
-			env: {
-				eventsOutTryPush: (pluginPtr, ptr, length) => {
-					throw Error("Why is it trying to push events at this point?");
-				}
-			}
-		};
-		Object.assign(imports, hostImports());
-		let host = await startHost(await this.#m_hostConfigPromise, imports);
+		let host = await startHost(await this.#m_hostConfigPromise, hostImports());
 		let hostApi = host.hostInstance.exports;
 		let wclapInstance = await host.startWclap(await this.#m_pluginConfigPromise);
 

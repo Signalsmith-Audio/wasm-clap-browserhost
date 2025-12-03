@@ -438,6 +438,7 @@
 					};
 					
 					let output = document.createElement('output');
+					if (!param.value) debugger;
 					output.textContent = param.value.text;
 
 					label.append(name, input, output);

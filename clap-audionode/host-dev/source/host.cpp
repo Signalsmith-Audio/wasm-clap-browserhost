@@ -27,11 +27,18 @@ extern "C" {
 	void destroyPlugin(HostedPlugin *plugin) {
 		delete plugin;
 	}
+	void pluginMainThread(HostedPlugin *plugin) {
+		plugin->mainThread();
+	}
 	CborValue * pluginGetInfo(HostedPlugin *plugin) {
 		return plugin->getInfo();
 	}
 	void pluginMessage(HostedPlugin *plugin, unsigned char *bytes, uint32_t length) {
 		plugin->message(bytes, length);
+	}
+	CborValue * pluginGetResource(HostedPlugin *plugin, const char *path, size_t pathLength) {
+		std::string pathStr{path, path + pathLength};
+		return plugin->getResource(pathStr);
 	}
 	CborValue * pluginGetParams(HostedPlugin *plugin) {
 		return plugin->getParams();
@@ -53,6 +60,13 @@ extern "C" {
 	}
 	bool pluginAcceptEvent(HostedPlugin *plugin, const void *header) {
 		return plugin->acceptEvent(header);
+	}
+
+	CborValue * pluginSaveState(HostedPlugin *plugin) {
+		return plugin->saveState();
+	}
+	bool pluginLoadState(HostedPlugin *plugin, unsigned char *bytes, uint32_t length) {
+		return plugin->loadState(bytes, length);
 	}
 
 	uint32_t pluginProcess(HostedPlugin *plugin, uint32_t blockLength) {

@@ -27,6 +27,8 @@ struct HostedWclap {
 	Pointer<wclap_host_webview> webviewExtPtr;
 	wclap_input_events inputEvents;
 	wclap_output_events outputEvents;
+	wclap_istream istream;
+	wclap_ostream ostream;
 
 	// Instance and supporting state
 	std::unique_ptr<Instance> instance;
@@ -42,13 +44,13 @@ struct HostedWclap {
 		self.instance->getArray(extensionIdPtr, extensionId, 255);
 		
 		if (!std::strcmp(extensionId, "clap.audio-ports")) return self.audioPortsExtPtr.cast<const void>();
-		if (!std::strcmp(extensionId, "clap.gui")) return self.paramsExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.gui")) return self.guiExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.latency")) return self.latencyExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.note-ports")) return self.notePortsExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.params")) return self.paramsExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.state")) return self.stateExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.tail")) return self.tailExtPtr.cast<const void>();
-		if (!std::strcmp(extensionId, "clap.webview/3")) return self.paramsExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.webview/3")) return self.webviewExtPtr.cast<const void>();
 		
 		std::cout << "Unsupported WCLAP host extension: " << extensionId << std::endl;
 		return {0}; // no extensions for now
@@ -80,6 +82,17 @@ struct HostedWclap {
 		auto *plugin = getPlugin(context, events);
 		if (plugin) return plugin->outputEventsTryPush(event);
 		return false;
+	}
+	
+	static int64_t istreamRead32(void *context, Pointer<const wclap_istream> stream, Pointer<void> buffer, uint64_t size) {
+		auto *plugin = getPlugin(context, stream);
+		if (plugin) return plugin->istreamRead(buffer, size);
+		return -1;
+	}
+	static int64_t ostreamWrite32(void *context, Pointer<const wclap_ostream> stream, Pointer<const void> buffer, uint64_t size) {
+		auto *plugin = getPlugin(context, stream);
+		if (plugin) return plugin->ostreamWrite(buffer, size);
+		return -1;
 	}
 
 	static bool audioPortsIsRescanFlagSupported32(void *context, Pointer<const wclap_host> host, uint32_t flag) {
@@ -182,6 +195,10 @@ struct HostedWclap {
 		inputEvents.get = instance->registerHost32(this, inputEventsGet32);
 		outputEvents.ctx = {0};
 		outputEvents.try_push = instance->registerHost32(this, outputEventsTryPush32);
+		istream.ctx = {0};
+		istream.read = instance->registerHost32(this, istreamRead32);
+		ostream.ctx = {0};
+		ostream.write = instance->registerHost32(this, ostreamWrite32);
 		
 		// Host extensions - functions defined above
 		audioPortsExtPtr = globalScoped.copyAcross(wclap_host_audio_ports{
@@ -291,14 +308,10 @@ struct HostedWclap {
 		Pointer<void> dataPtr = self.instance->get(hostPtr[&wclap_host::host_data]);
 		return self.pluginLookup.get(int32_t(dataPtr.wasmPointer));
 	}
-	static HostedPlugin * getPlugin(void *context, Pointer<const wclap_input_events> events) {
+	template<class WclapType>
+	static HostedPlugin * getPlugin(void *context, Pointer<const WclapType> events) {
 		auto &self = *(HostedWclap *)context;
-		Pointer<void> dataPtr = self.instance->get(events[&wclap_input_events::ctx]);
-		return self.pluginLookup.get(int32_t(dataPtr.wasmPointer));
-	}
-	static HostedPlugin * getPlugin(void *context, Pointer<const wclap_output_events> events) {
-		auto &self = *(HostedWclap *)context;
-		Pointer<void> dataPtr = self.instance->get(events[&wclap_output_events::ctx]);
+		Pointer<void> dataPtr = self.instance->get(events[&WclapType::ctx]);
 		return self.pluginLookup.get(int32_t(dataPtr.wasmPointer));
 	}
 	
@@ -309,6 +322,8 @@ struct HostedWclap {
 		auto hostPtr = scoped.copyAcross(host);
 		auto inputEventsPtr = scoped.copyAcross(inputEvents);
 		auto outputEventsPtr = scoped.copyAcross(outputEvents);
+		auto istreamPtr = scoped.copyAcross(istream);
+		auto ostreamPtr = scoped.copyAcross(ostream);
 		// Attempt to actually create the plugin using the plugin factory
 		auto fnPtr = pluginFactoryPtr[&wclap_plugin_factory::create_plugin];
 		auto pluginPtr = instance->call(fnPtr, pluginFactoryPtr, hostPtr, scoped.writeString(pluginId));
@@ -323,11 +338,15 @@ struct HostedWclap {
 		plugin->pluginIndex = pluginIndex;
 		plugin->inputEventsPtr = inputEventsPtr;
 		plugin->outputEventsPtr = outputEventsPtr;
+		plugin->istreamPtr = istreamPtr;
+		plugin->ostreamPtr = ostreamPtr;
 		
 		// Write the plugin index into the context pointers
 		instance->set(hostPtr[&wclap_host::host_data], {pluginIndex});
 		instance->set(inputEventsPtr[&wclap_input_events::ctx], {pluginIndex});
 		instance->set(outputEventsPtr[&wclap_output_events::ctx], {pluginIndex});
+		instance->set(istreamPtr[&wclap_istream::ctx], {pluginIndex});
+		instance->set(ostreamPtr[&wclap_ostream::ctx], {pluginIndex});
 		
 		std::cout << "Created WCLAP plugin: " << pluginId << "\n";
 		plugin->init();

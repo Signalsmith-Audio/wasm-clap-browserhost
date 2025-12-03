@@ -3,9 +3,16 @@
 #include "./common.h"
 
 #include <algorithm> // we need stable_sort
+#include <atomic>
 
 __attribute__((import_module("env"), import_name("eventsOutTryPush")))
 extern bool pluginOutputEventsTryPush32(const void *plugin, uint32_t remotePtr, uint32_t length);
+__attribute__((import_module("env"), import_name("webviewSend")))
+extern bool pluginWebviewSend(const void *plugin, uint32_t remotePtr, uint32_t length);
+__attribute__((import_module("env"), import_name("stateMarkDirty")))
+extern bool pluginStateMarkDirty(const void *plugin);
+__attribute__((import_module("env"), import_name("paramsRescan")))
+extern bool pluginParamsRescan(const void *plugin, uint32_t flags);
 
 namespace impl32 {
 using namespace wclap32;
@@ -13,6 +20,8 @@ using namespace wclap32;
 // A WCLAP plugin and its host
 struct HostedPlugin {
 	uint32_t pluginIndex = uint32_t(-1);
+	
+	std::atomic_flag mainThreadCallbackDone = ATOMIC_FLAG_INIT;
 
 	Instance *instance;
 	using Arena = wclap::MemoryArena<Instance, false>;
@@ -25,6 +34,8 @@ struct HostedPlugin {
 	Pointer<const wclap_plugin> pluginPtr;
 	Pointer<const wclap_input_events> inputEventsPtr;
 	Pointer<const wclap_output_events> outputEventsPtr;
+	Pointer<const wclap_istream> istreamPtr;
+	Pointer<const wclap_ostream> ostreamPtr;
 	wclap_plugin wclapPlugin;
 	Pointer<const wclap_plugin_audio_ports> audioPortsExtPtr;
 	Pointer<const wclap_plugin_gui> guiExtPtr;
@@ -99,6 +110,30 @@ struct HostedPlugin {
 		pendingEventBytes.clear();
 		copiedInputEventPtrs.clear();
 	}
+	
+	std::recursive_mutex streamMutex;
+	size_t streamPos = 0;
+	std::vector<unsigned char> streamData;
+	void clearStreamAlreadyLocked() {
+		streamPos = 0;
+		streamData.resize(0);
+	}
+	int64_t istreamRead(Pointer<void> ptr, uint64_t length) {
+		auto scoped = arenaPool.scoped();
+		if (streamPos >= streamData.size()) return 0;
+		if (streamPos + length > streamData.size()) {
+			length = streamData.size() - streamPos;
+		}
+		instance->setArray(ptr.cast<unsigned char>(), streamData.data() + streamPos, length);
+		streamPos += length;
+		return length;
+	}
+	int64_t ostreamWrite(Pointer<const void> ptr, uint64_t length) {
+		auto start = streamData.size();
+		streamData.resize(start + length);
+		instance->getArray(ptr.cast<const unsigned char>(), streamData.data() + start, uint32_t(length));
+		return length;
+	}
 
 	template<class FnPtr, class... Args>
 	auto callPlugin(FnPtr fn, Args... args) {
@@ -109,6 +144,7 @@ struct HostedPlugin {
 		pendingEventBytes.reserve(8192);
 		pendingEventStarts.reserve(512);
 		copiedInputEventPtrs.reserve(512);
+		streamData.reserve(8192);
 	}
 	~HostedPlugin() {
 		if (pluginPtr) {
@@ -129,6 +165,13 @@ struct HostedPlugin {
 		stateExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.state")).cast<wclap_plugin_state>();
 		tailExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.tail")).cast<wclap_plugin_tail>();
 		webviewExtPtr = callPlugin(plugin.get_extension, scoped.writeString("clap.webview/3")).cast<wclap_plugin_webview>();
+	}
+	
+	void mainThread() {
+		// Only call if requested
+		if (!mainThreadCallbackDone.test_and_set()) {
+			callPlugin(pluginPtr[&wclap_plugin::on_main_thread]);
+		}
 	}
 	
 	CborValue * getInfo() {
@@ -183,12 +226,16 @@ struct HostedPlugin {
 	CborValue * getParam(wclap_id paramId) {
 		auto scoped = arenaPool.scoped();
 		auto cbor = getCbor();
+		if (!paramsExtPtr) { // how would this even happen?
+			cbor.addNull();
+			return cborValue();
+		}
 
 		double value = 0;
 		auto valuePtr = scoped.copyAcross(value);
 
 		if (!callPlugin(paramsExtPtr[&wclap_plugin_params::get_value], paramId, valuePtr)) {
-			cbor.addNull();
+			cbor.addUtf8("plugin_params.get_value() returned false");
 			return cborValue();
 		}
 		value = instance->get(valuePtr);
@@ -396,7 +443,7 @@ struct HostedPlugin {
 		LOG_EXPR("host.request_process()");
 	}
 	void hostRequestCallback() {
-		LOG_EXPR("host.request_callback()");
+		mainThreadCallbackDone.clear();
 	}
 	
 	bool audioPortsIsRescanFlagSupported(uint32_t flag) {
@@ -440,7 +487,7 @@ struct HostedPlugin {
 	}
 
 	void paramsRescan(uint32_t flags) {
-		LOG_EXPR("host_params.rescan()");
+		pluginParamsRescan(this, flags);
 	}
 	void paramsClear(uint32_t paramId, uint32_t flags) {
 		LOG_EXPR("host_params.clear()");
@@ -450,16 +497,59 @@ struct HostedPlugin {
 	}
 	
 	void stateMarkDirty() {
-		LOG_EXPR("host_state.mark_dirty()");
+		pluginStateMarkDirty(this);
 	}
 
 	void tailChanged() {
 		LOG_EXPR("host_tail.changed()");
 	}
 
+	CborValue * saveState() {
+		std::unique_lock<std::recursive_mutex> lock{streamMutex};
+		auto cbor = getCbor();
+		clearStreamAlreadyLocked();
+		if (!callPlugin(stateExtPtr[&wclap_plugin_state::save], ostreamPtr)) {
+			cbor.addNull();
+			return cborValue();
+		}
+		cbor.addBytes(streamData.data(), streamData.size());
+		return cborValue();
+	}
+	bool loadState(unsigned char *bytes, uint32_t length) {
+		std::unique_lock<std::recursive_mutex> lock{streamMutex};
+		clearStreamAlreadyLocked();
+		streamData.assign(bytes, bytes + length);
+		return callPlugin(stateExtPtr[&wclap_plugin_state::load], istreamPtr);
+	}
+
 	bool webviewSend(Pointer<const void> buffer, uint32_t size) {
-		LOG_EXPR("host_webview.send()");
-		return false;
+		// JS can copy directly from instance memory
+		return pluginWebviewSend(this, buffer.wasmPointer, size);
+	}
+	CborValue * getResource(const std::string &path) {
+		auto cbor = getCbor();
+		if (!webviewExtPtr) {
+			cbor.addNull();
+			return cborValue();
+		}
+		
+		auto scoped = arenaPool.scoped();
+		auto mimePtr = scoped.array<char>(255);
+		std::unique_lock<std::recursive_mutex> lock{streamMutex};
+		clearStreamAlreadyLocked();
+		if (!callPlugin(webviewExtPtr[&wclap_plugin_webview::get_resource], scoped.writeString(path.c_str()), mimePtr, 255, ostreamPtr)) {
+			cbor.addNull();
+			return cborValue();
+		}
+		char mime[256] = "";
+		instance->getArray(mimePtr, mime, 255);
+
+		cbor.openMap(2);
+		cbor.addUtf8("type");
+		cbor.addUtf8(mime);
+		cbor.addUtf8("bytes");
+		cbor.addBytes(streamData.data(), streamData.size());
+		return cborValue();
 	}
 	void message(unsigned char *bytes, uint32_t length) {
 		if (!webviewExtPtr) return;
