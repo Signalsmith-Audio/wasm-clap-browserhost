@@ -13,6 +13,8 @@ __attribute__((import_module("env"), import_name("consoleLog")))
 extern void consoleLog(const char *chars, size_t length);
 __attribute__((import_module("env"), import_name("consoleError")))
 extern void consoleError(const char *chars, size_t length);
+__attribute__((import_module("env"), import_name("getRandom64")))
+extern uint64_t getRandom64();
 
 template<class T>
 struct P32 {
@@ -268,7 +270,12 @@ extern "C" {
 		return ENOTCAPABLE;
 	}
 	result_t wasi32_snapshot_preview1__random_get(P32<void> buffer, uint32_t length) {
-		return ENOTCAPABLE;
+		for (uint32_t offset = 0; offset < length; offset += 8) {
+			uint64_t v64 = getRandom64();
+			auto bytes = (length - offset);
+			memcpyToOther32(buffer.remotePointer + offset, &v64, bytes);
+		}
+		return 0;
 	}
 	result_t wasi32_snapshot_preview1__sched_yield() {
 		return ENOTCAPABLE;
