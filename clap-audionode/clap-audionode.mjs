@@ -199,7 +199,7 @@ export default class ClapAudioNode {
 						} else if (src[0] == "/" && uiOptions?.resourcePrefix) {
 							src = uiOptions.resourcePrefix + webview;
 						}
-						iframe.src = new URL(src, this.url);
+						iframe.src = new URL(src, document.baseURI);
 						effectNode.webviewOpen(true, !document.hidden);
 						return iframe;
 					};
