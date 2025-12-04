@@ -1,4 +1,14 @@
-# `wclap-js`: C++/JS library (& example host) for WCLAP
+# Hosting CLAP in the browser
+
+This repo provides an example browser host for CLAP plugins [compiled to WASM](https://github.com/geraintluff/wclap-cpp?tab=readme-ov-file#what-is-a-wclap).  Any plugin which can be fetched with CORS can be specified with `?module=<...>` in the URL.
+
+By default it loads WASM builds of [Signalsmith Basics](https://github.com/Signalsmith-Audio/basics).  The repo also includes my more [minimal CLAP examples](https://github.com/geraintluff/signalsmith-clap-cpp) (including webview UIs with the webview CLAP draft extension) which can be seen running [here](https://signalsmith-audio.github.io/wasm-clap-browserhost/?module=plugin/example-plugins-wasm32.wclap.tar.gz).
+
+## AudioWorklet wrapper
+
+The host is built on top of a wrapper (in `clap-audionode/`] which load a single WCLAP as an `AudioNode` (backed by an `AudioWorkletProcessor`).
+
+This is implemented by writing a C++ WCLAP host (see `clap-audionode/host-dev/host.cpp`) which provides a simpler API to the JS nodes.
 
 ## C++ and JS library
 
@@ -10,14 +20,4 @@ It also provides a JavaScript library (ES6 module: `wclap-js/wclap.mjs`) which c
 
 ![wclap-js architecture diagram](doc/wclap-js-outline.png)
 
-It also provides a WASI helper (written in C++, with JS to load it).  Currently this doesn't actually implement anything, but it defines all the functions for `wasi_snapshot_preview1` (32-bit only).
-
-## AudioWorklet wrapper
-
-This also includes an example C++ host (in `host-dev/host.cpp`), and wrappers which load a single WCLAP as an `AudioNode` (backed by an `AudioWorkletProcessor`).
-
-See `audioworkletnode-clap.mjs` and `audioworkletprocessor-clap.mjs`. 
-
-## Example host
-
-On top of that, it also includes an example host, which loads WCLAPs using the AudioWorklet wrappers, and connect it to a demo audio file and/or virtual keyboard.
+It also provides a WASI helper (written in C++, with JS to load it).  Currently this only implements the very basics (logging and random numbers), but it defines all the functions for `wasi_snapshot_preview1` (32-bit only).
