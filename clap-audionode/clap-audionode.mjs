@@ -22,7 +22,7 @@ export default class ClapAudioNode {
 		this.#m_pluginConfigPromise = getWclap(wclapOptions);
 		
 		// Optional timer thread to get more accurate CPU measurements
-		if (wclapOptions?.timerWorklet && !ClapAudioNode.#m_timerSharedArrayBuffer) {
+		if (globalThis.crossOriginIsolated && wclapOptions?.timerWorklet && !ClapAudioNode.#m_timerSharedArrayBuffer) {
 			let workerJs = new Blob([`this.onmessage = e => {`,
 				`console.log("CLAP AudioNode performance timer starting");`,
 				`let dv = new DataView(e.data);`,
