@@ -51,8 +51,7 @@ class WclapHost {
 	}
 	getWorkerData(threadData) {
 		if (!globalThis.crossOriginIsolated) {
-			console.error("Trying to start thread from invalid context (not cross-origin isolated)");
-			return -1;
+			throw Error("Trying to start thread from invalid context (not cross-origin isolated)");
 		}
 
 		let instancePtr = threadData.instancePtr;
@@ -237,7 +236,7 @@ class WclapHost {
 				if (entry.kind == 'memory') {
 					if (!importMemory) {
 						importMemory = new WebAssembly.Memory({initial: 8, maximum: 32768, shared: true});
-						config.memory = importMemory;
+						if (globalThis.crossOriginIsolated) config.memory = importMemory;
 					}
 					
 					if (!hostImports[entry.module]) hostImports[entry.module] = {};
@@ -293,7 +292,7 @@ class WclapHost {
 			if (entry.kind == 'memory') {
 				if (!importMemory) {
 					importMemory = new WebAssembly.Memory({initial: 8, maximum: 32768, shared: true});
-					wclapInitObj.memory = importMemory;
+					if (globalThis.crossOriginIsolated) wclapInitObj.memory = importMemory;
 				}
 				if (!wclapImports[entry.module]) wclapImports[entry.module] = {};
 				wclapImports[entry.module][entry.name] = importMemory;
