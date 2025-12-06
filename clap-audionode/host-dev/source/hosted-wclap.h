@@ -268,8 +268,7 @@ struct HostedWclap {
 		return hosted;
 	}
 
-	CborValue * getInfo() {
-		auto cbor = getCbor();
+	void getInfo(CborWriter &cbor) {
 		cbor.openMap();
 		
 		auto scoped = arenaPool.scoped();
@@ -299,7 +298,6 @@ struct HostedWclap {
 		
 		cbor.close(); // array
 		cbor.close(); // map
-		return cborValue();
 	}
 	
 	// Get the plugin pointer from the context pointer of various host-provided objects

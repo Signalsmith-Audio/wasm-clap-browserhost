@@ -4,10 +4,11 @@ Anything using this can be instantiated by `wclap-host.mjs`.  This provides the 
 */
 #include "wclap/instance.hpp"
 #include <type_traits>
+#include <atomic>
 
 // These are provided by `wclap-host.mjs`, and let us talk to another WebAssembly instance in the same JS context
-__attribute__((import_module("_wclapInstance"), import_name("initThread")))
-extern void _wclapInstanceInitThread(const void *handle, int threadId, uint64_t startArg);
+__attribute__((import_module("_wclapInstance"), import_name("runThread")))
+extern void _wclapInstanceRunThread(const void *handle, int32_t threadId, uint64_t startArg);
 
 __attribute__((import_module("_wclapInstance"), import_name("release")))
 extern void _wclapInstanceRelease(const void *handle);
@@ -127,10 +128,15 @@ namespace js_wasm {
 	struct WclapInstance {
 		void * const handle;
 		const bool wasm64;
+		std::atomic<int32_t> threadIdCounter{0};
+		std::atomic<uint32_t> pendingThreads{0}, runningThreads{0};
 		
 		WclapInstance(void *handle, bool wasm64) : handle(handle), wasm64(wasm64) {}
 		WclapInstance(const WclapInstance &other) = delete;
 		~WclapInstance() {
+			if (runningThreads > 0 || pendingThreads > 0) {
+				std::cerr << "~Instance(), but still has threads (" << uint32_t(runningThreads) << " running, " << uint32_t(pendingThreads) << " pending)" << std::endl;
+			}
 			_wclapInstanceRelease(handle);
 		}
 		
@@ -142,13 +148,21 @@ namespace js_wasm {
 		const char * path() const {
 			return pathChars.data();
 		}
-
-		void *threadSpawnContext = nullptr;
-		int (*threadSpawn)(void *context, uint64_t startArg) = nullptr;
-
-		// Thread-specific init - calls through to wasi_thread_start()
-		void initThread(int threadId, uint64_t startArg) {
-			_wclapInstanceInitThread(handle, threadId, startArg);
+		
+		int32_t nextThreadId() {
+			auto threadId = ++threadIdCounter;
+			if (threadId >= 0x20000000) {
+				--threadIdCounter;
+				return -1; // Lifetime limit of 2^29 threads
+			}
+			++pendingThreads;
+			return threadId;
+		}
+		void runThread(int32_t threadId, uint64_t startArg) {
+			++runningThreads;
+			--pendingThreads;
+			_wclapInstanceRunThread(handle, threadId, startArg);
+			--runningThreads;
 		}
 		
 		//---- wclap32 ----//
@@ -260,7 +274,9 @@ namespace js_wasm {
 using Instance = wclap::Instance<js_wasm::WclapInstance>;
 
 extern "C" {
-	uint32_t _wclapInstanceGetNextIndex();
 	Instance * _wclapInstanceCreate(bool is64);
 	char * _wclapInstanceSetPath(Instance *instance, size_t size);
+	uint32_t _wclapInstanceGetNextIndex();
+	int32_t _wclapNextThreadId();
+	int32_t _wclapStartInstanceThread(Instance *instance, uint64_t instanceThreadArg);
 }

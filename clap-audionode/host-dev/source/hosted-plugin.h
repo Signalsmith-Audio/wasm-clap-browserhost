@@ -174,10 +174,9 @@ struct HostedPlugin {
 		}
 	}
 	
-	CborValue * getInfo() {
+	void getInfo(CborWriter &cbor) {
 		auto plugin = instance->get(pluginPtr);
 		auto scoped = arenaPool.scoped();
-		auto cbor = getCbor();
 		cbor.openMap();
 
 		cbor.addUtf8("desc");
@@ -200,7 +199,6 @@ struct HostedPlugin {
 		}
 
 		cbor.close();
-		return cborValue();
 	}
 	void setParam(wclap_id paramId, double value) {
 		wclap_event_param_value event{
@@ -223,12 +221,11 @@ struct HostedPlugin {
 		};
 		addEvent32(&event.header);
 	}
-	CborValue * getParam(wclap_id paramId) {
+	void getParam(wclap_id paramId, CborWriter &cbor) {
 		auto scoped = arenaPool.scoped();
-		auto cbor = getCbor();
 		if (!paramsExtPtr) { // how would this even happen?
 			cbor.addNull();
-			return cborValue();
+			return;
 		}
 
 		double value = 0;
@@ -236,7 +233,7 @@ struct HostedPlugin {
 
 		if (!callPlugin(paramsExtPtr[&wclap_plugin_params::get_value], paramId, valuePtr)) {
 			cbor.addUtf8("plugin_params.get_value() returned false");
-			return cborValue();
+			return;
 		}
 		value = instance->get(valuePtr);
 		auto textPtr = scoped.array<char>(255);
@@ -252,11 +249,9 @@ struct HostedPlugin {
 			cbor.addUtf8(text);
 		}
 		cbor.close();
-		return cborValue();
 	}
-	CborValue * getParams() {
+	void getParams(CborWriter &cbor) {
 		auto scoped = arenaPool.scoped();
-		auto cbor = getCbor();
 		cbor.openArray();
 
 		wclap_param_info info;
@@ -289,17 +284,15 @@ struct HostedPlugin {
 			cbor.close();
 		}
 		cbor.close(); // array
-		return cborValue();
 	}
-	CborValue * start(double sRate, uint32_t minFrames, uint32_t maxFrames) {
-		auto cbor = getCbor();
+	bool start(double sRate, uint32_t minFrames, uint32_t maxFrames, CborWriter &cbor) {
 		if (!callPlugin(pluginPtr[&wclap_plugin::activate], sRate, minFrames, maxFrames)) {
 			cbor.addNull();
-			return cborValue();
+			return false;
 		}
 		if (!callPlugin(pluginPtr[&wclap_plugin::start_processing])) {
 			cbor.addNull();
-			return cborValue();
+			return false;
 		}
 
 		// Set up a single process struct (to be re-used each time) with sufficiently big buffers
@@ -387,7 +380,7 @@ struct HostedPlugin {
 				cbor.addInt(instance->get(buffer.data32, c).wasmPointer);
 			}
 		}
-		return cborValue();
+		return true;
 	}
 	void stop() {
 		callPlugin(pluginPtr[&wclap_plugin::stop_processing]);
@@ -504,21 +497,20 @@ struct HostedPlugin {
 		LOG_EXPR("host_tail.changed()");
 	}
 
-	CborValue * saveState() {
+	bool saveState(std::vector<unsigned char> &buffer) {
 		std::unique_lock<std::recursive_mutex> lock{streamMutex};
-		auto cbor = getCbor();
 		clearStreamAlreadyLocked();
 		if (!callPlugin(stateExtPtr[&wclap_plugin_state::save], ostreamPtr)) {
-			cbor.addNull();
-			return cborValue();
+			buffer.resize(0);
+			return false;
 		}
-		cbor.addBytes(streamData.data(), streamData.size());
-		return cborValue();
+		buffer = streamData;
+		return true;
 	}
-	bool loadState(unsigned char *bytes, uint32_t length) {
+	bool loadState(const std::vector<unsigned char> &buffer) {
 		std::unique_lock<std::recursive_mutex> lock{streamMutex};
 		clearStreamAlreadyLocked();
-		streamData.assign(bytes, bytes + length);
+		streamData = buffer;
 		return callPlugin(stateExtPtr[&wclap_plugin_state::load], istreamPtr);
 	}
 
@@ -526,11 +518,10 @@ struct HostedPlugin {
 		// JS can copy directly from instance memory
 		return pluginWebviewSend(this, buffer.wasmPointer, size);
 	}
-	CborValue * getResource(const std::string &path) {
-		auto cbor = getCbor();
+	bool getResource(const std::string &path, CborWriter &cbor) {
 		if (!webviewExtPtr) {
 			cbor.addNull();
-			return cborValue();
+			return false;
 		}
 		
 		auto scoped = arenaPool.scoped();
@@ -539,7 +530,7 @@ struct HostedPlugin {
 		clearStreamAlreadyLocked();
 		if (!callPlugin(webviewExtPtr[&wclap_plugin_webview::get_resource], scoped.writeString(path.c_str()), mimePtr, 255, ostreamPtr)) {
 			cbor.addNull();
-			return cborValue();
+			return false;
 		}
 		char mime[256] = "";
 		instance->getArray(mimePtr, mime, 255);
@@ -549,7 +540,7 @@ struct HostedPlugin {
 		cbor.addUtf8(mime);
 		cbor.addUtf8("bytes");
 		cbor.addBytes(streamData.data(), streamData.size());
-		return cborValue();
+		return true;
 	}
 	void message(unsigned char *bytes, uint32_t length) {
 		if (!webviewExtPtr) return;

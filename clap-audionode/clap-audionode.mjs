@@ -1,70 +1,74 @@
 import {getHost, startHost, getWclap} from "../wclap-js/wclap.mjs";
-import hostImports from "./host-imports.mjs";
+import {hostImports, startThreadWorker} from "./host-imports.mjs";
 import CBOR from "./cbor.mjs";
 
 export default class ClapAudioNode {
-	#m_moduleAddedToAudioContext = Symbol();
+	#moduleAddedToAudioContext = Symbol();
 
-	#m_hostConfigPromise;
-	#m_pluginConfigPromise;
+	static #routingId = Symbol();
+	static #timerSharedArrayBuffer;
+	static #hostConfigPromise;
+	#ready;
 	
-	static #m_routingId = Symbol();
-	static #m_timerSharedArrayBuffer;
-	
-	static useTimerWorklet = false;
-
 	constructor(wclapOptions) {
-		if (typeof wclapOptions === 'string') {
-			wclapOptions = {url: new URL(wclapOptions, document.baseURI).href};
+		if (typeof wclapOptions === 'string') wclapOptions = {url: wclapOptions};
+		wclapOptions.url = new URL(wclapOptions.url, document.baseURI).href;
+
+		// Load configs and start host/WCLAP
+		if (!ClapAudioNode.#hostConfigPromise) {
+			ClapAudioNode.#hostConfigPromise = getHost(new URL("./host.wasm", import.meta.url).href);
 		}
-		// This particular host gets instantiated once per plugin, but that doesn't need to be true in general
-		this.#m_hostConfigPromise = getHost(new URL("./host.wasm", import.meta.url).href);
-		this.#m_pluginConfigPromise = getWclap(wclapOptions);
+		this.#ready = (async (hostConfigPromise, wclapConfigPromise) => {
+			// We *could* have a common host across all WCLAP modules, but then we'd need to figure out when to de-register them
+			let host = await startHost(await hostConfigPromise, hostImports(), startThreadWorker);
+			let wclapConfig = await wclapConfigPromise;
+			let wclap = await host.startWclap(wclapConfig);
+			let api = host.hostInstance.exports;
+			let hostedPtr = api.makeHosted(wclap.ptr); // this specific host's wrapper around an `Instance *`
+			return {
+				host: host,
+				api: api,
+				bytesPtr: api.createBytes(),
+				wclap: wclap,
+				hostedPtr: hostedPtr,
+				files: wclapConfig.files // TODO: we use this for `.getFiles()` but actually that should use the WASI VFS which these are loaded into,
+			};
+		})(ClapAudioNode.#hostConfigPromise, getWclap(wclapOptions));
 		
 		// Optional timer thread to get more accurate CPU measurements
-		if (globalThis.crossOriginIsolated && wclapOptions?.timerWorklet && !ClapAudioNode.#m_timerSharedArrayBuffer) {
+		if (globalThis.crossOriginIsolated && wclapOptions?.timerWorklet && !ClapAudioNode.#timerSharedArrayBuffer) {
 			let workerJs = new Blob([`this.onmessage = e => {`,
 				`console.log("CLAP AudioNode performance timer starting");`,
 				`let dv = new DataView(e.data);`,
 				`while (1) dv.setFloat32(0, performance.now());`,
 			`};`], {type: 'application/javascript'});
 			let worker = new Worker(URL.createObjectURL(workerJs), {name: "CLAP AudioNode performance timer"});
-			let buffer = ClapAudioNode.#m_timerSharedArrayBuffer = new SharedArrayBuffer(8);
+			let buffer = ClapAudioNode.#timerSharedArrayBuffer = new SharedArrayBuffer(8);
 			new DataView(buffer).setFloat32(0, performance.now());
 			worker.postMessage(buffer);
 		}
 	}
 	
 	async plugins() {
-		let host = await startHost(await this.#m_hostConfigPromise, hostImports());
-		let hostApi = host.hostInstance.exports;
-		let wclapInstance = await host.startWclap(await this.#m_pluginConfigPromise);
+		let {host, api, hostedPtr, bytesPtr} = await this.#ready;
 
-		let hostedPtr = hostApi.makeHosted(wclapInstance.ptr);
-		if (!hostedPtr) throw Error("Failed to load WCLAP");
-
-		// Decodes `CborReturn *`
-		let decodeCbor = ptr => {
-			if (!ptr) return null;
-			let buffer = host.hostMemory.buffer;
-			let dataView = new DataView(buffer);
-			let cborPtr = dataView.getUint32(ptr, true);
-			let cborLength = dataView.getUint32(ptr + 4, true);
+		let decodeCbor = _ => {
+			let cborPtr = api.getBytesData(bytesPtr);
+			let cborLength = api.getBytesLength(bytesPtr);
 
 			// Have to copy because the TextDecoder doesn't like shared buffers
-			let bytes = new Uint8Array(buffer).slice(cborPtr, cborPtr + cborLength);
+			let bytes = new Uint8Array(host.hostMemory.buffer).slice(cborPtr, cborPtr + cborLength);
 			return CBOR.decode(bytes);
 		};
-
-		let info = decodeCbor(hostApi.getInfo(hostedPtr));
+		
+		let info = decodeCbor(api.getInfo(hostedPtr, bytesPtr));
 		console.log(info);
-
-		hostApi.removeHosted(hostedPtr);
+		
 		return info.plugins;
 	}
 	
 	async createNode(audioContext, pluginId, nodeOptions) {
-		if (!nodeOptions && typeof pluginId === 'object') {
+		if (!nodeOptions && typeof pluginId === 'object') { // optional argument
 			nodeOptions = pluginId;
 			pluginId = null;
 		}
@@ -73,24 +77,28 @@ export default class ClapAudioNode {
 			numberOfOutputs: 1,
 			outputChannelCount: [2],
 		};
-		
-		if (!audioContext[this.#m_moduleAddedToAudioContext]) {
+
+		// Add the AudioWorkletProcessor module
+		if (!audioContext[this.#moduleAddedToAudioContext]) {
 			let moduleUrl = new URL('./clap-audioworkletprocessor.mjs', import.meta.url);
 			await audioContext.audioWorklet.addModule(moduleUrl);
 		}
-		audioContext[this.#m_moduleAddedToAudioContext] = true;
-		
+		audioContext[this.#moduleAddedToAudioContext] = true;
+
+		let {host, wclap, hostedPtr} = await this.#ready;
 		nodeOptions.processorOptions = {
-			host: await this.#m_hostConfigPromise,
-			wclap: await this.#m_pluginConfigPromise,
+			// These provide enough information
+			host: host.initObj(),
+			wclap: wclap.initObj(),
+			hostedPtr: wclap.shared ? hostedPtr : null,
 			pluginId: pluginId
 		};
 
 		let effectNode = new AudioWorkletNode(audioContext, 'audioworkletprocessor-clap', nodeOptions);
 
 		// Connect to timer worker, if running
-		if (ClapAudioNode.#m_timerSharedArrayBuffer) {
-			effectNode.port.postMessage(["timer-sharedArrayBuffer", ClapAudioNode.#m_timerSharedArrayBuffer]);
+		if (ClapAudioNode.#timerSharedArrayBuffer) {
+			effectNode.port.postMessage(["timer-sharedArrayBuffer", ClapAudioNode.#timerSharedArrayBuffer]);
 		}
 
 		let responseMap = Object.create(null);
@@ -108,39 +116,33 @@ export default class ClapAudioNode {
 		}
 
 		effectNode.getFile = async path => {
-			let files = (await this.#m_pluginConfigPromise).files;
+			let files = (await this.#ready).files;
 			return files[path.replace(/[?#].*/, '')];
 		};
 
 		// Hacky event-handling: add a named function to this map
 		effectNode.events = Object.create(null);
-//
-		return new Promise(resolve => {
-//			function spawnWorker(data) {
-//				if (data?.[0] == "worker") {
-//					let moduleUrl = data[1], options = data[2], threadId = data[3], threadArg = data[4];
-//					options.module = moduleObj;
-//					let worker = new Worker(moduleUrl, {type: 'module', name: 'thread-' + threadId});
-//					worker.postMessage([options, threadId, threadArg]);
-//					return true;
-//				}
-//				return false;
-//			}
+		
+		function handleWorkerMessage(data) {
+			if (data?.[0] == 'thread-worker') return startThreadWorker(host, data[1]);
+			return false;
+		}
 
+		return new Promise(resolve => {
 			effectNode.port.onmessage = e => {
-//				if (spawnWorker(e.data)) return;
+				if (handleWorkerMessage(e.data)) return;
 				let {routingId, desc, methods, webview} = e.data;
-				effectNode[ClapAudioNode.#m_routingId] = routingId;
+				effectNode[ClapAudioNode.#routingId] = routingId;
 				effectNode.descriptor = desc;
 				methods.forEach(addRemoteMethod);
 				// For [dis]connectEvents, replace the other node with its ID
 				effectNode.connectEvents = (prevMethod => otherNode => {
-					if (otherNode[ClapAudioNode.#m_routingId] != null) {
-						return prevMethod(otherNode[ClapAudioNode.#m_routingId]);
+					if (otherNode[ClapAudioNode.#routingId] != null) {
+						return prevMethod(otherNode[ClapAudioNode.#routingId]);
 					}
 				})(effectNode.connectEvents);
 				effectNode.disconnectEvents = (prevMethod => nodeOrNull => {
-					return prevMethod(nodeOrNull?.[ClapAudioNode.#m_routingId]);
+					return prevMethod(nodeOrNull?.[ClapAudioNode.#routingId]);
 				})(effectNode.disconnectEvents);
 
 				let prevGetResource = effectNode.getResource;
@@ -153,10 +155,10 @@ export default class ClapAudioNode {
 				let iframe = null;
 
 				effectNode.port.onmessage = e => {
-//					if (spawnWorker(e.data)) return;
+					if (handleWorkerMessage(e.data)) return;
 					let data = e.data;
 					if (data instanceof ArrayBuffer) {
-						// it's a message from the plugin
+						// it's a message from the plugin to the UI
 						if (iframe) iframe.contentWindow.postMessage(data, '*');
 						return;
 					}

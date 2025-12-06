@@ -5,10 +5,14 @@
 #include "wclap/memory-arena.hpp"
 #include "./wclap-js-instance.h"
 
-#include "./cbor-value.h"
+// We read/write compound values as CBOR
+#include "cbor-walker/cbor-walker.h"
 
-template<class InstancePtr, class Cbor, class Descriptor>
-void writeDescriptorCbor(InstancePtr &instance, Cbor &cbor, Descriptor descriptor) {
+using CborWriter = signalsmith::cbor::CborWriter;
+using CborWalker = signalsmith::cbor::CborWalker;
+
+template<class InstancePtr, class Descriptor>
+void writeDescriptorCbor(InstancePtr &instance, CborWriter &cbor, Descriptor descriptor) {
 	char str[256] = "";
 	auto copyString = [&](const char *key, wclap32::Pointer<const char> ptr) {
 		if (!ptr) return;

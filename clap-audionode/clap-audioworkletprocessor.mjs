@@ -1,5 +1,5 @@
 import {getHost, startHost, getWclap} from "../wclap-js/wclap.mjs";
-import hostImports from "./host-imports.mjs";
+import {hostImports} from "./host-imports.mjs";
 import CBOR from "./cbor.mjs";
 
 // For debugging, we sometimes import this module into the main page, and makes that work
@@ -27,9 +27,11 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 
 	// Could be global
 	host;
+	hostApi;
 	
 	// Could be shared amongst all plugins from the same module
 	hostedWclapPtr; // The specific WCLAP model (created from an `Instance *` in C++)
+	hostedBytes; // Bytes which we can use to send/receive bigger values
 	instanceMemory; // We read/write sample data directly, to avoid copying in/out of the host
 	instanceAudioPointers; // pointers to read/write audio in the Instance memory
 	instanceSingleThreaded = true;
@@ -44,30 +46,28 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		delete globalThis.clapRouting[routingId];
 	});
 
-	// Decode or fills the (host-specific) `CborReturn *`
-	decodeCbor(ptr) {
-		if (!ptr) return null;
-		let buffer = this.host.hostMemory.buffer;
-		let dataView = new DataView(buffer);
-		let cborPtr = dataView.getUint32(ptr, true);
-		let cborLength = dataView.getUint32(ptr + 4, true);
-
+	decodeCbor() {
+		let cborPtr = this.hostApi.getBytesData(this.hostedBytes);
+		let cborLength = this.hostApi.getBytesLength(this.hostedBytes);
 		// Have to copy because the TextDecoder doesn't like shared buffers
-		let bytes = new Uint8Array(buffer).slice(cborPtr, cborPtr + cborLength);
+		let bytes = new Uint8Array(this.host.hostMemory.buffer).slice(cborPtr, cborPtr + cborLength);
 		return CBOR.decode(bytes);
-	};
-	encodeCbor(value) {
-		let bytes = new Uint8Array(CBOR.encode(value));
-		return this.sendBytes(bytes, true);
+	}
+	encodeString(str) {
+		let bytes = new Uint8Array(str.length);
+		for (let i = 0; i < str.length; ++i) bytes[i] = str.charCodeAt(i);
+		return this.sendBytes(bytes);
 	}
 	sendBytes(bytes, returnCbor) {
-		let ptr = this.hostApi.resizeCbor(bytes.length);
-		let buffer = this.host.hostMemory.buffer;
-		let dataView = new DataView(buffer);
-		let bufferPtr = dataView.getUint32(ptr, true);
-		let array = new Uint8Array(buffer).subarray(bufferPtr, bufferPtr + bytes.length);
+		let bufferPtr = this.hostApi.resizeBytes(this.hostedBytes, bytes.length);
+		let array = new Uint8Array(this.host.hostMemory.buffer).subarray(bufferPtr, bufferPtr + bytes.length);
 		array.set(bytes);
-		return returnCbor ? ptr : bufferPtr;
+		return this.hostedBytes;
+	}
+	getBytes(bytes, returnCbor) {
+		let cborPtr = this.hostApi.getBytesData(this.hostedBytes);
+		let cborLength = this.hostApi.getBytesLength(this.hostedBytes);
+		return new Uint8Array(this.host.hostMemory.buffer).slice(cborPtr, cborPtr + cborLength);
 	}
 	
 	constructor(options) {
@@ -100,18 +100,25 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 					processor.port.postMessage(['params_rescan', flags]);
 				}
 			});
-			this.host = await startHost(init.host, imports);
+			
+			this.host = await startHost(init.host, imports, (host, threadData) => {
+				this.port.postMessage(["thread-worker", threadData]);
+				return true;
+			});
 			let hostApi = this.hostApi = this.host.hostInstance.exports;
 			
 			// This particular WASM module
 			let wclapInstance = await this.host.startWclap(init.wclap);
-			this.hostedWclapPtr = hostApi.makeHosted(wclapInstance.ptr);
+			// Register only if needed
+			this.hostedWclapPtr = init.hostedPtr ?? hostApi.makeHosted(wclapInstance.ptr);
+			this.hostedBytes = hostApi.createBytes(); // TODO: remove this along with destroying the plugin instance
+
 			this.instanceMemory = wclapInstance.memory;
 
 			let pluginId = init.pluginId;
 			if (!pluginId) {
 				let pluginIndex = init.pluginIndex || 0;
-				let moduleInfo = this.decodeCbor(hostApi.getInfo(this.hostedWclapPtr));
+				let moduleInfo = this.decodeCbor(hostApi.getInfo(this.hostedWclapPtr, this.hostedBytes));
 				pluginId = moduleInfo.plugins[pluginIndex].id;
 			}
 
@@ -122,19 +129,19 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			};
 			ClapAudioWorkletProcessor.#cleanup.register(this, this.routingId);
 			
-			this.pluginPtr = hostApi.createPlugin(this.hostedWclapPtr, this.encodeCbor(pluginId));
+			this.pluginPtr = hostApi.createPlugin(this.hostedWclapPtr, this.encodeString(pluginId));
 			if (!this.pluginPtr) {
 				throw this.fatalError = Error("Failed to create plugin: " + pluginId);
 			}
 			this.instancePluginMap[this.pluginPtr] = this; // this would be removed whenever we call `hostApi.destroyPlugin()` later
-			this.instanceAudioPointers = this.decodeCbor(hostApi.pluginStart(this.pluginPtr, globalThis.sampleRate, 0, this.maxFramesCount));
+			this.instanceAudioPointers = this.decodeCbor(hostApi.pluginStart(this.pluginPtr, globalThis.sampleRate, 0, this.maxFramesCount, this.hostedBytes));
 			if (!this.instanceAudioPointers) {
 				throw this.fatalError = Error("Failed to start plugin: " + pluginId);
 			}
 			this.running = true;
 
 			// initial message lists plugin descriptor and remote methods
-			let pluginInfo = this.decodeCbor(hostApi.pluginGetInfo(this.pluginPtr));
+			let pluginInfo = this.decodeCbor(hostApi.pluginGetInfo(this.pluginPtr, this.hostedBytes));
 			this.port.postMessage(Object.assign(pluginInfo, {
 				routingId: this.routingId,
 				methods: Object.keys(this.remoteMethods),
@@ -145,7 +152,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 				let data = event.data;
 				if (data instanceof ArrayBuffer) {
 					let bytes = new Uint8Array(data);
-					hostApi.pluginMessage(this.pluginPtr, this.sendBytes(bytes), bytes.length);
+					hostApi.pluginMessage(this.pluginPtr, this.sendBytes(bytes));
 					return;
 				}
 				let [requestId, method, args] = data;
@@ -216,11 +223,14 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 		},
 		saveState() {
 			// TODO: transfer ownership, to avoid allocation/GC from this
-			return this.decodeCbor(this.hostApi.pluginSaveState(this.pluginPtr));
+			if (!this.hostApi.pluginSaveState(this.pluginPtr, this.hostedBytes)) {
+				return null;
+			}
+			return this.getBytes();
 		},
 		loadState(stateArray) {
 			let bytes = new Uint8Array(stateArray);
-			return this.hostApi.pluginLoadState(this.pluginPtr, this.sendBytes(bytes), bytes.length);
+			return this.hostApi.pluginLoadState(this.pluginPtr, this.sendBytes(bytes));
 		},
 		setParam(paramId, value) {
 			this.hostApi.pluginSetParam(this.pluginPtr, paramId, value);
@@ -231,10 +241,10 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			return this.remoteMethods.getParam.call(this, paramId);
 		},
 		getParam(paramId) {
-			return this.decodeCbor(this.hostApi.pluginGetParam(this.pluginPtr, paramId));
+			return this.decodeCbor(this.hostApi.pluginGetParam(this.pluginPtr, paramId, this.hostedBytes));
 		},
 		getParams() {
-			let params = this.decodeCbor(this.hostApi.pluginGetParams(this.pluginPtr));
+			let params = this.decodeCbor(this.hostApi.pluginGetParams(this.pluginPtr, this.hostedBytes));
 			params.forEach(param => {
 				param.value = this.remoteMethods.getParam.call(this, param.id);
 			});
@@ -244,9 +254,7 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 			return {js: this.#averageJsMs, wasm: this.#averageWasmMs, block: this.#averageBlockMs};
 		},
 		getResource(path) {
-			let bytes = new Uint8Array(path.length);
-			for (let i = 0; i < path.length; ++i) bytes[i] = path.charCodeAt(i);
-			return this.decodeCbor(this.hostApi.pluginGetResource(this.pluginPtr, this.sendBytes(bytes), bytes.length));
+			return this.decodeCbor(this.hostApi.pluginGetResource(this.pluginPtr, this.encodeString(path)));
 		},
 		webviewOpen(isOpen, isVisible) {
 			// TODO: let the `clap.gui` extension know

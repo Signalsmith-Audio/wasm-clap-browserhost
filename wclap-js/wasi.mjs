@@ -254,6 +254,6 @@ export async function getWasi(initObj) {
 }
 
 export async function startWasi(initObj) {
-	if (!initObj.module) initObj = getWasi(initObj);
+	if (!initObj?.module) initObj = await getWasi(initObj);
 	return new Wasi(initObj).ready;
 }

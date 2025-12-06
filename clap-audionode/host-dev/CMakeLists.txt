@@ -8,7 +8,7 @@ set(CMAKE_EXECUTABLE_SUFFIX .wasm)
 
 add_executable(host
 	${CMAKE_CURRENT_LIST_DIR}/source/host.cpp
-	${CMAKE_CURRENT_LIST_DIR}/source/cbor-value.cpp
+	${CMAKE_CURRENT_LIST_DIR}/source/cbor-bytes.cpp
 )
 target_compile_options(host PUBLIC "-fno-exceptions")
 target_link_options(host PUBLIC "-mexec-model=reactor" "-Wl,--max-memory=4294967296" "-Wl,--export-all")

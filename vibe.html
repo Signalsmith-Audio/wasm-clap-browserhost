@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Vibe</title>
+		<style>
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				display: grid;
+				
+				position: fixed;
+				margin: 0;
+				padding: 1rem;
+				gap: 1rem;
+				left: 0;
+				top: 0;
+				width: 100vw;
+				height: 100vh;
+				overflow: auto;
+				
+				font-family: Verdana, sans-serif;
+				background: #9a9aa3;
+				color: #000;
+			}
+			
+			#background, #background3 {
+				position: fixed;
+				left: 0;
+				top: 0;
+				width: 100vw;
+				height: 100vh;
+				object-fit: cover;
+				z-index: -1;
+				pointer-events: none;
+				opacity: 0.3;
+			}
+			#background3 {
+				left: -50vw;
+				top: -50vh;
+				width: 200vw;
+				height: 200vh;
+				z-index: -2;
+				transform: rotate(180deg);
+			}
+			#background2 {
+				position: fixed;
+				left: 0;
+				top: 0;
+				width: 100vw;
+				height: 100vh;
+				z-index: -3;
+				pointer-events: none;
+				opacity: 0.2;
+			}
+			body {
+				filter: saturate(1.2);
+			}
+		</style>
+	</head>
+	<body>
+		<img id="background" src="background.jpg">
+		<img id="background3" src="background.jpg">
+		<div id="background2">
+		<script>
+			let speed = parseFloat(new URLSearchParams(location.search).get('speed')) || 1;
+			let intervalMs = Math.max(30, 100/speed);
+			function updateFilters() {
+				let m = [3000, 4124, 2152, 2515, 4215, 1553, 5253, 1424, 3715, 5253, 8512, 2511];
+				let values = m.map(m => 0.5 + 0.499*Math.cos(Date.now()*speed/m));
+
+				let style = document.createElement('style');
+				let sepia = values.pop()/2;
+				let sepia2 = values.pop()/2;
+				let f = x => x*x*(3 - 2*x);
+				let invert = values.pop();
+				let invert2 = values.pop();
+				for (let i = 0; i < 4; ++i) {
+					invert = f(invert);
+					invert2 = f(invert2);
+				}
+				let angle = (Math.cos(speed*Date.now()/20000) + Math.cos(speed*Date.now()/16200))/2;
+				style.textContent = `
+				#background{
+					filter:hue-rotate(150deg) sepia(${sepia}) hue-rotate(${values.pop()*360}deg) saturate(${1 + sepia}) invert(${invert});
+				}
+				#background2{
+					background: linear-gradient(${angle*360}deg, #F80, #F08, #80F, #08F);
+				}
+				#background3{
+					filter:hue-rotate(150deg) sepia(${sepia2}) hue-rotate(${values.pop()*360}deg) saturate(${1 + sepia2}) invert(${invert2});
+				}
+				#background, #background2, #background3 {
+					transition: filter linear ${intervalMs*2}ms, background linear ${intervalMs*2}ms;
+				}
+				`;
+				document.head.appendChild(style);
+			}
+			updateFilters();
+			setInterval(updateFilters, intervalMs);
+		</script>
+	</body>
+</html>

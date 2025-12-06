@@ -9,6 +9,8 @@
 #include "./hosted-wclap.h"
 #include "./hosted-plugin.h"
 
+#include "./cbor-bytes.h"
+
 extern "C" {
 	HostedWclap * makeHosted(Instance *instance) {
 		return HostedWclap::create(instance);
@@ -16,13 +18,15 @@ extern "C" {
 	void removeHosted(HostedWclap *hosted) {
 		delete hosted;
 	}
-	CborValue * getInfo(HostedWclap *hosted) {
-		return hosted->getInfo();
+	void getInfo(HostedWclap *hosted, Bytes *bytes) {
+		auto cbor = bytes->write();
+		return hosted->getInfo(cbor);
 	}
 
-	HostedPlugin * createPlugin(HostedWclap *hosted, CborValue *cbor) {
-		 auto pluginId = cbor->read().utf8();
-		 return hosted->createPlugin(pluginId.c_str());
+	HostedPlugin * createPlugin(HostedWclap *hosted, Bytes *bytes) {
+		auto pluginId = bytes->readString();
+		LOG_EXPR(pluginId);
+		return hosted->createPlugin(pluginId.c_str());
 	}
 	void destroyPlugin(HostedPlugin *plugin) {
 		delete plugin;
@@ -30,30 +34,35 @@ extern "C" {
 	void pluginMainThread(HostedPlugin *plugin) {
 		plugin->mainThread();
 	}
-	CborValue * pluginGetInfo(HostedPlugin *plugin) {
-		return plugin->getInfo();
+	void pluginGetInfo(HostedPlugin *plugin, Bytes *bytes) {
+		auto cbor = bytes->write();
+		return plugin->getInfo(cbor);
 	}
-	void pluginMessage(HostedPlugin *plugin, unsigned char *bytes, uint32_t length) {
-		plugin->message(bytes, length);
+	void pluginMessage(HostedPlugin *plugin, Bytes *bytes) {
+		plugin->message(bytes->buffer.data(), bytes->buffer.size());
 	}
-	CborValue * pluginGetResource(HostedPlugin *plugin, const char *path, size_t pathLength) {
-		std::string pathStr{path, path + pathLength};
-		return plugin->getResource(pathStr);
+	bool pluginGetResource(HostedPlugin *plugin, Bytes *bytes) {
+		auto pathStr = bytes->readString();
+		auto cbor = bytes->write();
+		return plugin->getResource(pathStr, cbor);
 	}
-	CborValue * pluginGetParams(HostedPlugin *plugin) {
-		return plugin->getParams();
+	void pluginGetParams(HostedPlugin *plugin, Bytes *bytes) {
+		auto cbor = bytes->write();
+		plugin->getParams(cbor);
 	}
-	CborValue * pluginGetParam(HostedPlugin *plugin, uint32_t paramId) {
-		return plugin->getParam(paramId);
+	void pluginGetParam(HostedPlugin *plugin, uint32_t paramId, Bytes *bytes) {
+		auto cbor = bytes->write();
+		plugin->getParam(paramId, cbor);
 	}
 	void pluginSetParam(HostedPlugin *plugin, uint32_t paramId, double value) {
-		return plugin->setParam(paramId, value);
+		plugin->setParam(paramId, value);
 	}
 	void pluginParamsFlush(HostedPlugin *plugin) {
-		return plugin->paramsFlush();
+		plugin->paramsFlush();
 	}
-	CborValue * pluginStart(HostedPlugin *plugin, double sRate, uint32_t minFrames, uint32_t maxFrames) {
-		return plugin->start(sRate, minFrames, maxFrames);
+	bool pluginStart(HostedPlugin *plugin, double sRate, uint32_t minFrames, uint32_t maxFrames, Bytes *bytes) {
+		auto cbor = bytes->write();
+		return plugin->start(sRate, minFrames, maxFrames, cbor);
 	}
 	void pluginStop(HostedPlugin *plugin) {
 		return plugin->stop();
@@ -62,11 +71,11 @@ extern "C" {
 		return plugin->acceptEvent(header);
 	}
 
-	CborValue * pluginSaveState(HostedPlugin *plugin) {
-		return plugin->saveState();
+	bool pluginSaveState(HostedPlugin *plugin, Bytes *bytes) {
+		return plugin->saveState(bytes->buffer);
 	}
-	bool pluginLoadState(HostedPlugin *plugin, unsigned char *bytes, uint32_t length) {
-		return plugin->loadState(bytes, length);
+	bool pluginLoadState(HostedPlugin *plugin, Bytes *bytes) {
+		return plugin->loadState(bytes->buffer);
 	}
 
 	uint32_t pluginProcess(HostedPlugin *plugin, uint32_t blockLength) {
