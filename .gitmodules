@@ -4,3 +4,6 @@
 [submodule "host-dev/modules/cbor-walker"]
 	path = clap-audionode/host-dev/modules/cbor-walker
 	url = https://github.com/geraintluff/cbor-walker.git
+[submodule "clap-audionode/wclap-js"]
+	path = clap-audionode/wclap-js
+	url = https://github.com/WebCLAP/wclap-js.git

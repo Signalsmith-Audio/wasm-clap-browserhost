@@ -1,4 +1,4 @@
-import {getHost, startHost, getWclap} from "../wclap-js/wclap.mjs";
+import {getHost, startHost, getWclap} from "./wclap-js/wclap.mjs";
 import {hostImports, startThreadWorker} from "./host-imports.mjs";
 import CBOR from "./cbor.mjs";
 
