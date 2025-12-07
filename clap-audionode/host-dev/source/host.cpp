@@ -67,8 +67,8 @@ extern "C" {
 	void pluginStop(HostedPlugin *plugin) {
 		return plugin->stop();
 	}
-	bool pluginAcceptEvent(HostedPlugin *plugin, const void *header) {
-		return plugin->acceptEvent(header);
+	bool pluginAcceptEvent(HostedPlugin *plugin, Bytes *bytes) {
+		return plugin->acceptEvent(bytes->buffer.data());
 	}
 
 	bool pluginSaveState(HostedPlugin *plugin, Bytes *bytes) {

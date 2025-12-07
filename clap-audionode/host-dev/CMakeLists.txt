@@ -14,7 +14,7 @@ target_compile_options(host PUBLIC "-fno-exceptions")
 target_link_options(host PUBLIC "-mexec-model=reactor" "-Wl,--max-memory=4294967296" "-Wl,--export-all")
 
 # Add wclap-js
-add_subdirectory(../../wclap-js-cpp "wclap-js-cpp-build")
+add_subdirectory(../wclap-js "wclap-js-cpp-build")
 target_link_libraries(host PUBLIC wclap-js)
 
 # CBOR for passing structured results
