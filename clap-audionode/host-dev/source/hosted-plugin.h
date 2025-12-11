@@ -13,6 +13,8 @@ __attribute__((import_module("env"), import_name("stateMarkDirty")))
 extern bool pluginStateMarkDirty(const void *plugin);
 __attribute__((import_module("env"), import_name("paramsRescan")))
 extern bool pluginParamsRescan(const void *plugin, uint32_t flags);
+__attribute__((import_module("env"), import_name("log")))
+extern bool pluginLog(const void *plugin, int32_t severity, uint32_t remotePtr, uint32_t length);
 
 namespace impl32 {
 using namespace wclap32;
@@ -551,6 +553,10 @@ struct HostedPlugin {
 		instance->setArray(ptr, bytes, length);
 
 		callPlugin(webviewExtPtr[&wclap_plugin_webview::receive], ptr.cast<const void>(), length);
+	}
+	void log(int32_t severity, Pointer<const char> msg) {
+		auto strLength = instance->countUntil(msg, 0, 8192);
+		pluginLog(this, severity, msg.wasmPointer, strLength);
 	}
 };
 

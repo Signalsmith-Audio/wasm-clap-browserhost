@@ -20,6 +20,7 @@ struct HostedWclap {
 	Pointer<wclap_host_audio_ports> audioPortsExtPtr;
 	Pointer<wclap_host_gui> guiExtPtr;
 	Pointer<wclap_host_latency> latencyExtPtr;
+	Pointer<wclap_host_log> logExtPtr;
 	Pointer<wclap_host_note_ports> notePortsExtPtr;
 	Pointer<wclap_host_params> paramsExtPtr;
 	Pointer<wclap_host_state> stateExtPtr;
@@ -46,6 +47,7 @@ struct HostedWclap {
 		if (!std::strcmp(extensionId, "clap.audio-ports")) return self.audioPortsExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.gui")) return self.guiExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.latency")) return self.latencyExtPtr.cast<const void>();
+		if (!std::strcmp(extensionId, "clap.log")) return self.logExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.note-ports")) return self.notePortsExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.params")) return self.paramsExtPtr.cast<const void>();
 		if (!std::strcmp(extensionId, "clap.state")) return self.stateExtPtr.cast<const void>();
@@ -133,7 +135,12 @@ struct HostedWclap {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) plugin->latencyChanged();
 	}
-	
+
+	static void logLog32(void *context, Pointer<const wclap_host> host, int32_t severity, Pointer<const char> msg) {
+		auto *plugin = getPlugin(context, host);
+		if (plugin) plugin->log(severity, msg);
+	}
+
 	static uint32_t notePortsSupportedDialects32(void *context, Pointer<const wclap_host> host) {
 		auto *plugin = getPlugin(context, host);
 		if (plugin) return plugin->notePortsSupportedDialects();
@@ -214,6 +221,9 @@ struct HostedWclap {
 		});
 		latencyExtPtr = globalScoped.copyAcross(wclap_host_latency{
 			.changed=instance->registerHost32(this, latencyChanged32),
+		});
+		logExtPtr = globalScoped.copyAcross(wclap_host_log{
+			.log=instance->registerHost32(this, logLog32),
 		});
 		notePortsExtPtr = globalScoped.copyAcross(wclap_host_note_ports{
 			.supported_dialects=instance->registerHost32(this, notePortsSupportedDialects32),

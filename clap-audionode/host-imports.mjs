@@ -15,6 +15,10 @@ export function hostImports() {
 			},
 			paramsRescan: (pluginPtr, flags) => {
 				throw Error("paramsRescan");
+			},
+			log: (pluginPtr, severity, msgPtr, length) => {
+				// From here, we can't find the appropriate memory to read bytes from
+				console.error("The plugin used clap.log!  It's not very effective...");
 			}
 		}
 	};

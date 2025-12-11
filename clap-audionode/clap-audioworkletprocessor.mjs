@@ -98,6 +98,17 @@ class ClapAudioWorkletProcessor extends AudioWorkletProcessor {
 				paramsRescan: (pluginPtr, flags) => {
 					let processor = this.instancePluginMap[pluginPtr];
 					processor.port.postMessage(['params_rescan', flags]);
+				},
+				log: (pluginPtr, severity, msgPtr, length) => {
+					let processor = this.instancePluginMap[pluginPtr];
+					let bytes = new Uint8Array(this.instanceMemory.buffer, msgPtr, length);
+					let logStr = "";
+					for (let i = 0; i < length; ++i) logStr += String.fromCharCode(bytes[i]);
+					if (severity >= 2) {
+						console.error(logStr);
+					} else {
+						console.log(logStr);
+					}
 				}
 			});
 			
